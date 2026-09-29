@@ -1,0 +1,2 @@
+-- Florian Sales: quotation catalogue starts empty.
+-- Staff add line items in Catalogue. No seeded combo-box or panel SKUs.

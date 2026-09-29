@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  /* Florian — cyan drop + deep navy */
+  --primary: #1BA8E0;
+  --primary-hover: #1489C4;
+  --primary-light: #E4F5FC;
+  --primary-faint: #F4FBFE;
+  --accent: #163A5C;
+  --accent-hover: #0F2A44;
+  --accent-light: #E4F5FC;
+  --accent-faint: #F4FBFE;
+  --leaf: #1BA8E0;
+  --ink: #163A5C;
+  --text-dark: #163A5C;
+  --text-body: #334155;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+  --bg: #FAFAFA;
+  --bg-white: #ffffff;
+  --border: #dbe2ea;
+  --border-light: #e8eef3;
+  --success: #1b7a4a;
+  --success-light: #e8f6ee;
+  --info: #1BA8E0;
+  --info-light: #E4F5FC;
+  --warn: #D97706;
+  --warn-light: #FFFBEB;
+  --error: #c0392b;
+  --error-light: #fef2f1;
+  --critical: #9b1c1c;
+  --critical-light: #fef2f2;
+  --stage-new: #64748b;
+  --stage-new-light: #f1f5f9;
+  --radius: 10px;
+  --radius-xl: 16px;
+  --shadow: 0 1px 3px rgba(22, 58, 92, 0.06), 0 1px 2px rgba(15, 27, 45, 0.04);
+  --shadow-lg: 0 10px 40px rgba(22, 58, 92, 0.12);
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-leaf: var(--leaf);
+  --color-brand-50: #F4FBFE;
+  --color-brand-100: #E4F5FC;
+  --color-brand-200: #C5EAF8;
+  --color-brand-300: #8FD4F2;
+  --color-brand-400: #4FBFEB;
+  --color-brand-500: #1BA8E0;
+  --color-brand-600: #1489C4;
+  --color-brand-700: #0F6E9E;
+  --color-brand-800: #163A5C;
+  --color-brand-900: #0E2438;
+  --font-sans: var(--font-body), "Segoe UI", sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text-body);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-slide-up {
+  animation: fade-slide-up 0.45s ease-out both;
+}
+
+.dashboard-hero {
+  isolation: isolate;
+}
+
+@keyframes dashboard-shimmer {
+  from {
+    transform: translateX(-12%) rotate(8deg);
+    opacity: 0.35;
+  }
+  to {
+    transform: translateX(8%) rotate(8deg);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-slide-up {
+    animation: none;
+  }
+}
