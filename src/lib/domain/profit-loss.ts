@@ -125,8 +125,9 @@ export function buildProfitLoss(
     if (!isIsoDate(day) || day < range.from || day > range.to) continue;
     if (line.direction !== "outward" && line.direction !== "inward") continue;
 
-    const missing = !hasAmount(line.amountInr);
-    const rupees = missing ? 0 : line.amountInr;
+    const amount = line.amountInr;
+    const missing = !hasAmount(amount);
+    const rupees = hasAmount(amount) ? amount : 0;
     if (missing) missingAmountCount += 1;
     if (line.direction === "outward") sales += rupees;
     else purchases += rupees;
