@@ -5,7 +5,7 @@ Working source is `Apps/Florian-Sales`. Refresh this package with `sync-from-app
 ## Included
 
 - Next.js app (`src`, `public`, config)
-- Florian logo and theme (`public/brand/logo.jpeg`)
+- Florian logo and theme (`public/brand/logo.png`)
 - Supabase migrations and `supabase/run_all_migrations.sql`
 - `.env.example`
 

@@ -42,9 +42,9 @@ rec(
 
 rec(
   "logo",
-  exists("public/brand/logo.jpeg") && !exists("public/brand/logo.png") ? "PASS" : "FAIL",
-  "Florian jpeg, no leftover FRS png",
-  `jpeg=${exists("public/brand/logo.jpeg")} png=${exists("public/brand/logo.png")}`
+  exists("public/brand/logo.png") && !exists("public/brand/logo.jpeg") ? "PASS" : "FAIL",
+  "Florian png lockup",
+  `png=${exists("public/brand/logo.png")} jpeg=${exists("public/brand/logo.jpeg")}`
 );
 
 const account = read("src/lib/domain/account-code.ts");

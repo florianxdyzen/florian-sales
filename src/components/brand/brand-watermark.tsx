@@ -1,3 +1,5 @@
+import { BRAND } from "@/lib/brand";
+
 /** Centered page watermark — always visible behind UI chrome, hidden when printing. */
 export function BrandWatermark() {
   return (
@@ -7,7 +9,7 @@ export function BrandWatermark() {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/brand/logo.jpeg"
+        src={`${BRAND.logoPath}?v=${BRAND.logoCache}`}
         alt=""
         className="h-auto w-[min(72vw,36rem)] max-w-none select-none object-contain opacity-[0.04]"
         draggable={false}

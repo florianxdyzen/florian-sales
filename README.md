@@ -4,7 +4,7 @@ Sales pipeline, quotations, and B2B trade for Florian. Forked from FRS Solar. Pl
 
 Inventory stays in `Apps/Florian`. This app does not share that database.
 
-**Brand:** cyan `#1BA8E0` / navy `#163A5C` / soft `#E4F5FC`. Logo: `public/brand/logo.jpeg`. Account and quote prefix `FLR`.
+**Brand:** cyan `#1BA8E0` / navy `#163A5C` / soft `#E4F5FC`. Logo: `public/brand/logo.png`. Account and quote prefix `FLR`.
 
 ## Setup
 

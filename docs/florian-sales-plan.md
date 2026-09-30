@@ -80,7 +80,7 @@ Keep from FRS, because the four features sit on this spine:
 
 ## 4. Brand
 
-Reuse the inventory logo and tokens. Source: `Apps/Florian/public/logo.jpeg` (also `Apps/Florian/files/Florian_Logo.jpeg`). Tagline: *Quality that you can trust*.
+Official lockup is `public/brand/logo.png`. Theme tokens stay cyan `#1BA8E0` / navy `#163A5C` / soft `#E4F5FC`. Tagline: *Quality that you can trust*.
 
 | Token | Value |
 |-------|--------|
@@ -91,7 +91,7 @@ Reuse the inventory logo and tokens. Source: `Apps/Florian/public/logo.jpeg` (al
 | Soft tint | `#E4F5FC` |
 | Page background | `#FAFAFA` |
 | Surface | `#FFFFFF` |
-| Logo | `public/brand/logo.jpeg` (copy from inventory; also keep `docs/logo.jpeg`) |
+| Logo | `public/brand/logo.png` (official lockup) |
 | Quote prefix | `FLR` |
 | Account code | `FLR` + integer, unique, searchable. Start number in Settings. |
 | Portal prefix | None |

@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path $PSScriptRoot -Parent
-$src = Join-Path $root "public\brand\logo.jpeg"
+$src = Join-Path $root "public\brand\logo.png"
 $brandDir = Join-Path $root "public\brand"
 $publicDir = Join-Path $root "public"
 if (-not (Test-Path -LiteralPath $src)) { throw "Missing $src" }
@@ -31,4 +31,4 @@ function Save-Contained([int]$size, [string]$dest) {
 Save-Contained 192 (Join-Path $brandDir "icon-192.png")
 Save-Contained 512 (Join-Path $brandDir "icon-512.png")
 Copy-Item -Force (Join-Path $brandDir "icon-192.png") (Join-Path $publicDir "apple-touch-icon.png")
-Write-Host "Wrote Florian PWA icons from public/brand/logo.jpeg"
+Write-Host "Wrote Florian PWA icons from public/brand/logo.png"

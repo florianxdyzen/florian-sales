@@ -6,9 +6,9 @@ export const BRAND = {
   productLine: "Sales pipeline, quotations, and B2B trade",
   poweredBy: "Powered by Dyzen Solar Technologies",
   poweredByName: "Dyzen Solar Technologies",
-  logoPath: "/brand/logo.jpeg",
+  logoPath: "/brand/logo.png",
   /** Cache-bust when the official mark is replaced. */
-  logoCache: "florian-1",
+  logoCache: "florian-2",
 } as const;
 
 export const ROLE_LABELS: Record<string, string> = {

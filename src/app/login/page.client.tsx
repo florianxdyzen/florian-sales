@@ -67,7 +67,7 @@ export default function LoginPage() {
         />
 
         <div className="relative z-10">
-          <BrandMark tone="onDark" imageClassName="h-auto w-36 sm:w-40" />
+          <BrandMark imageClassName="h-auto w-36 sm:w-40" />
         </div>
 
         <div className="relative z-10 fade-slide-up">
