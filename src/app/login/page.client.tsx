@@ -67,7 +67,7 @@ export default function LoginPage() {
         />
 
         <div className="relative z-10">
-          <BrandMark imageClassName="h-auto w-36 sm:w-40" />
+          <BrandMark plate="circle" />
         </div>
 
         <div className="relative z-10 fade-slide-up">
@@ -100,7 +100,7 @@ export default function LoginPage() {
       <div className="flex w-full flex-1 flex-col items-center justify-center px-6 py-12 sm:px-10">
         <div className="w-full max-w-sm fade-slide-up">
           <div className="mb-9 flex flex-col items-center text-center lg:hidden">
-            <BrandMark imageClassName="h-auto w-36" />
+            <BrandMark plate="circle" />
           </div>
 
           <div className="mb-8 hidden lg:block">
