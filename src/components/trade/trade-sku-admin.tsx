@@ -42,7 +42,11 @@ export function TradeSkuAdmin({
             setError(null);
             start(async () => {
               try {
-                await upsertTradeSku({ name, direction, family, uom });
+                const saved = await upsertTradeSku({ name, direction, family, uom });
+                if (!saved.ok) {
+                  setError(saved.error);
+                  return;
+                }
                 setName("");
                 router.refresh();
               } catch (err) {

@@ -161,6 +161,10 @@ export function CatalogAdmin({
           categoryId: categoryId || null,
           imageUrl: imageUrl || null,
         });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
         if (imageFile) {
           const formData = new FormData();
           formData.set("file", imageFile);

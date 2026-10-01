@@ -42,9 +42,9 @@ export default async function CatalogPage({
   );
 
   const [catalog, ratePanels, rateInverters, tradeSkus] = await Promise.all([
-    listCatalogAdmin(),
-    getRateCardPanels(),
-    getRateCardInverters(),
+    listCatalogAdmin().catch(() => ({ items: [], brands: [], categories: [] })),
+    getRateCardPanels().catch(() => []),
+    getRateCardInverters().catch(() => []),
     listTradeSkus({ includeInactive: true }).catch(() => []),
   ]);
 

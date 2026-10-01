@@ -53,8 +53,8 @@ export default async function NewQuotationPage({
   const [leads, catalog, solarCatalog, panels, inverters, template, nextQuotationNo, initialLead] =
     await Promise.all([
       listLeadsForQuote().catch(() => []),
-      listCatalogItems(),
-      getCatalogForQuotation(),
+      listCatalogItems().catch(() => []),
+      getCatalogForQuotation().catch(() => []),
       getRateCardPanels({ forSales: !canManageCatalog }).catch(() => []),
       getRateCardInverters().catch(() => []),
       loadSolarTemplate(),

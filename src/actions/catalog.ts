@@ -129,9 +129,10 @@ export async function upsertCatalogItem(input: {
   warrantyText?: string | null;
   imageUrl?: string | null;
   isActive?: boolean;
-}) {
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
   const profile = await requireCatalogManage();
-  const parsed = z
+  const parsedResult = z
     .object({
       id: z.string().uuid().optional(),
       itemName: z.string().min(2).max(200),
@@ -147,7 +148,11 @@ export async function upsertCatalogItem(input: {
       imageUrl: z.string().max(2000).nullable().optional(),
       isActive: z.boolean().optional(),
     })
-    .parse(input);
+    .safeParse(input);
+  if (!parsedResult.success) {
+    return { ok: false, error: parsedResult.error.issues[0]?.message ?? "Invalid item" };
+  }
+  const parsed = parsedResult.data;
 
   const supabase = await createClient();
   const row = {
@@ -173,10 +178,10 @@ export async function upsertCatalogItem(input: {
       .update(row)
       .eq("id", parsed.id)
       .eq("company_id", profile.company_id);
-    if (error) throw new Error(error.message);
+    if (error) return { ok: false as const, error: error.message };
     revalidatePath("/catalog");
     revalidatePath("/quotations");
-    return { ok: true, id: parsed.id };
+    return { ok: true as const, id: parsed.id };
   }
 
   const { data: inserted, error } = await supabase
@@ -184,10 +189,13 @@ export async function upsertCatalogItem(input: {
     .insert(row)
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error || !inserted) return { ok: false as const, error: error?.message ?? "Could not add item" };
   revalidatePath("/catalog");
   revalidatePath("/quotations");
   return { ok: true, id: inserted.id as string };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not add item" };
+  }
 }
 
 export async function setCatalogItemActive(itemId: string, isActive: boolean) {

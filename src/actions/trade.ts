@@ -144,7 +144,10 @@ const skuSchema = z.object({
   sort_order: z.coerce.number().int().min(0).max(9999).optional(),
 });
 
-export async function upsertTradeSku(input: z.infer<typeof skuSchema>) {
+export async function upsertTradeSku(
+  input: z.infer<typeof skuSchema>
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
   const profile = await requireAuth();
   if (!(await canManageSkus(profile))) throw new Error("Only Admin can manage trade SKUs");
   const parsed = skuSchema.parse(input);
@@ -162,8 +165,12 @@ export async function upsertTradeSku(input: z.infer<typeof skuSchema>) {
     ? supabase.from("trade_skus").update(row).eq("id", parsed.id).eq("company_id", profile.company_id)
     : supabase.from("trade_skus").insert(row);
   const { error } = await q;
-  if (error) wrapDb(error.message);
+  if (error) return { ok: false as const, error: tradeMissingTableError(error.message) ?? error.message };
   revalidatePath("/catalog");
+  return { ok: true as const };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not add SKU" };
+  }
 }
 
 export async function setTradeSkuActive(id: string, isActive: boolean) {
