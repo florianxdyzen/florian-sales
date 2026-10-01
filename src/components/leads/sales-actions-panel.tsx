@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { FRS_ALLOW_CONSUMER_WON, frsDefaultQuoteHref } from "@/lib/product-surface";
+import { FRS_ALLOW_CONSUMER_WON, frsDefaultQuoteHref, frsSolarQuoteHref } from "@/lib/product-surface";
 import { Phone, Bell, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label, Textarea, Select, Input } from "@/components/ui/input";
@@ -146,6 +146,12 @@ export function SalesActionsPanel({
         className="inline-flex text-sm font-semibold text-[var(--primary)] hover:underline"
       >
         Open trade ledger
+      </Link>
+      <Link
+        href={frsSolarQuoteHref(lead.id)}
+        className="inline-flex text-sm font-semibold text-[var(--primary)] hover:underline"
+      >
+        New solar quote
       </Link>
       <Link
         href={frsDefaultQuoteHref(lead.id)}

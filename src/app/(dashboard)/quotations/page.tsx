@@ -36,7 +36,7 @@ export default async function QuotationsPage() {
       <PageHeader
         eyebrow="Others"
         title="Quotes"
-        subtitle="B2B quotations. Optional residential kit quotes stay under Solar."
+        subtitle="B2B quotations and solar kit quotations."
         className="mb-0"
         actions={
           <>
@@ -47,6 +47,15 @@ export default async function QuotationsPage() {
               >
                 <Settings2 className="h-4 w-4" />
                 Template
+              </Link>
+            )}
+            {canCreate && (
+              <Link
+                href="/quotations/new?kind=solar"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--text-body)] hover:bg-[var(--bg)]"
+              >
+                <Plus className="h-4 w-4" />
+                New solar quote
               </Link>
             )}
             {canCreate && (

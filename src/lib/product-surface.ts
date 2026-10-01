@@ -51,3 +51,8 @@ export function frsDefaultQuoteHref(leadId?: string | null): string {
   const base = "/quotations/new?kind=non_solar";
   return leadId ? `${base}&leadId=${leadId}` : base;
 }
+
+export function frsSolarQuoteHref(leadId?: string | null): string {
+  const base = "/quotations/new?kind=solar";
+  return leadId ? `${base}&leadId=${leadId}` : base;
+}

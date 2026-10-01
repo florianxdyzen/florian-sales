@@ -9,7 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { ProofUploadField } from "@/components/ui/proof-upload-button";
 import { completeSurvey, getSurveySitePhotos, startSurvey } from "@/actions/surveys";
 import type { LeadWithRelations } from "@/lib/domain/types";
-import { FRS_SHOW_QUOTE_ON_SURVEY_DONE, frsDefaultQuoteHref } from "@/lib/product-surface";
+import { FRS_SHOW_QUOTE_ON_SURVEY_DONE, frsDefaultQuoteHref, frsSolarQuoteHref } from "@/lib/product-surface";
 import {
   SURVEY_PHOTO_SLOTS,
   type SurveyPhotoKey,
@@ -450,16 +450,24 @@ export function QuotePlaceholderCard({
   if (!show) return null;
 
   const href = frsDefaultQuoteHref(lead.id);
+  const solarHref = frsSolarQuoteHref(lead.id);
 
   if (variant === "header") {
     if (!canCreate && !onSurveyDone) return null;
     if (!canCreate) return null;
     return (
-      <Link href={href}>
-        <Button type="button" size="sm" variant="secondary">
-          Create quotation
-        </Button>
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link href={solarHref}>
+          <Button type="button" size="sm" variant="secondary">
+            Solar quote
+          </Button>
+        </Link>
+        <Link href={href}>
+          <Button type="button" size="sm" variant="secondary">
+            B2B quote
+          </Button>
+        </Link>
+      </div>
     );
   }
 
@@ -473,14 +481,19 @@ export function QuotePlaceholderCard({
           <h3 className="font-semibold text-[var(--text-dark)]">Create quotation</h3>
           <p className="mt-0.5 text-sm text-[var(--text-muted)]">
             {onSurveyDone
-              ? "Survey Done — create a B2B quotation for this account."
-              : "Create a B2B quotation for this account."}
+              ? "Survey Done — create a solar or B2B quotation for this account."
+              : "Create a solar or B2B quotation for this account."}
           </p>
           {canCreate ? (
             <div className="mt-3 flex flex-wrap gap-2">
-              <Link href={href}>
+              <Link href={solarHref}>
                 <Button type="button" size="sm">
-                  Create quotation
+                  Solar quote
+                </Button>
+              </Link>
+              <Link href={href}>
+                <Button type="button" size="sm" variant="secondary">
+                  B2B quote
                 </Button>
               </Link>
             </div>

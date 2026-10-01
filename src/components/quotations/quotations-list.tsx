@@ -23,7 +23,7 @@ type QuoteRow = {
 
 const TABS = [
   { id: "b2b", label: "B2B" },
-  { id: "solar", label: "Kit (solar)" },
+  { id: "solar", label: "Solar" },
   { id: "all", label: "All" },
 ] as const;
 
@@ -138,7 +138,7 @@ export function QuotationsList({
                   {tab === "b2b"
                     ? "No B2B quotations yet."
                     : tab === "solar"
-                      ? "No kit (solar) quotations yet."
+                      ? "No solar quotations yet."
                       : "No quotations yet."}
                   {canCreate && (
                     <>
