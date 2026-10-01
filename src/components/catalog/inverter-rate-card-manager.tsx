@@ -86,6 +86,10 @@ export function InverterRateCardManager({
           sortOrder: inverter.sort_order,
           isActive: inverter.is_active,
         });
+        if (!updated.ok) {
+          setError(updated.error);
+          return;
+        }
         setInverters((prev) =>
           prev.map((inv) =>
             inv.id !== inverter.id
@@ -113,6 +117,10 @@ export function InverterRateCardManager({
           inverterSize: newRow.inverterSize.trim(),
           sortOrder: inverters.length,
         });
+        if (!created.ok) {
+          setError(created.error);
+          return;
+        }
         setInverters((prev) => [
           ...prev,
           {

@@ -18,6 +18,20 @@ ALTER TABLE quotations
   ADD COLUMN IF NOT EXISTS inverter_type_name VARCHAR(200),
   ADD COLUMN IF NOT EXISTS inverter_size_label VARCHAR(100);
 
+ALTER TABLE rate_card_inverters ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS rate_card_inverters_select ON rate_card_inverters;
+CREATE POLICY rate_card_inverters_select ON rate_card_inverters FOR SELECT
+  USING (company_id = auth_company_id() AND is_active_user());
+
+DROP POLICY IF EXISTS rate_card_inverters_manage ON rate_card_inverters;
+CREATE POLICY rate_card_inverters_manage ON rate_card_inverters FOR ALL
+  USING (company_id = auth_company_id() AND has_authority('manage_catalog_items'))
+  WITH CHECK (company_id = auth_company_id() AND has_authority('manage_catalog_items'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON rate_card_inverters TO authenticated;
+GRANT ALL ON rate_card_inverters TO service_role;
+
 COMMENT ON TABLE rate_card_inverters IS 'Solar inverter BOM options (brand/name + size label) for quotations';
 COMMENT ON COLUMN quotations.inverter_type_name IS 'Snapshot: inverter brand/name from rate card';
 COMMENT ON COLUMN quotations.inverter_size_label IS 'Snapshot: inverter size label from rate card (free text)';

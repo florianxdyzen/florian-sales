@@ -311,8 +311,17 @@ const inverterSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export async function upsertRateInverter(input: unknown) {
-  const data = inverterSchema.parse(input);
+export async function upsertRateInverter(
+  input: unknown
+): Promise<
+  | { ok: true; id: string; inverter_name: string; inverter_size: string; sort_order: number; is_active: boolean }
+  | { ok: false; error: string }
+> {
+  const parsed = inverterSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid inverter" };
+  }
+  const data = parsed.data;
   const { supabase, companyId } = await requireCatalogManage();
   const row = {
     company_id: companyId,
@@ -332,9 +341,11 @@ export async function upsertRateInverter(input: unknown) {
       .eq("company_id", companyId)
       .select(selectCols)
       .single();
-    if (error) throw error;
+    if (error || !updated) {
+      return { ok: false, error: error?.message ?? "Could not save inverter" };
+    }
     revalidatePath("/catalog");
-    return updated;
+    return { ok: true, ...updated };
   }
 
   const { data: inserted, error } = await supabase
@@ -342,9 +353,11 @@ export async function upsertRateInverter(input: unknown) {
     .insert(row)
     .select(selectCols)
     .single();
-  if (error) throw error;
+  if (error || !inserted) {
+    return { ok: false, error: error?.message ?? "Could not add inverter" };
+  }
   revalidatePath("/catalog");
-  return inserted;
+  return { ok: true, ...inserted };
 }
 
 export async function deleteRateInverter(id: string) {

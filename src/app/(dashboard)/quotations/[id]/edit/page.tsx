@@ -52,7 +52,7 @@ export default async function EditQuotationPage({
 
   if (quote.template_kind === "non_solar") {
     const [catalog, leads] = await Promise.all([
-      listCatalogItems("non_solar").catch(() => []),
+      listCatalogItems("non_solar"),
       listLeadsForQuote().catch(() => []),
     ]);
     return (

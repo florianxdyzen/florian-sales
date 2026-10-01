@@ -178,7 +178,6 @@ export async function getQuotation(id: string): Promise<QuotationRow> {
 export async function upsertQuotation(
   input: z.infer<typeof upsertSchema>
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  try {
   const profile = await requireQuoteWrite();
   const parsedResult = upsertSchema.safeParse(input);
   if (!parsedResult.success) {
@@ -412,10 +411,6 @@ export async function upsertQuotation(
   revalidatePath("/customers");
   revalidatePath(`/quotations/${quotationId}`);
   return { ok: true, id: quotationId! };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not save the quotation";
-    return { ok: false, error: message };
-  }
 }
 
 export async function acceptQuotation(quotationId: string) {
