@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { QuotationBuilderForm } from "@/components/quotations/quotation-builder-form";
 import { QuotationBuilderFormAppliance } from "@/components/quotations/quotation-builder-form-appliance";
 import type { QuoteLeadOption } from "@/components/quotations/quote-customer-picker";
-import { QuoteTierToggle, type QuoteTier } from "@/components/quotations/quote-tier-toggle";
+import type { QuoteTier } from "@/components/quotations/quote-tier-toggle";
 import {
   QUOTE_TEMPLATE_LABELS,
   usesSolarRateCardBuilder,
@@ -71,7 +71,7 @@ export function NewQuotationWorkspace({
   const kind = initialKind;
   const isSolar = usesSolarRateCardBuilder(kind);
   const isPremiumFlow = kind === "premium";
-  const [tier, setTier] = useState<QuoteTier>(isPremiumFlow ? "premium" : "premium");
+  const tier: QuoteTier = isPremiumFlow ? "premium" : "regular";
 
   const initialCustomer = useMemo(() => leadToCustomer(initialLead), [initialLead]);
 
@@ -92,19 +92,10 @@ export function NewQuotationWorkspace({
           </p>
           <p className="text-xs text-[var(--text-muted)]">
             {isSolar
-              ? isPremiumFlow
-                ? "Premium per-kW rate card · same proposal PDF as solar"
-                : "Turnkey per-kW pricing · type a name in Customer Details to link a lead"
+              ? "Choose Regular or Premium on the form. Type a name in Customer Details to link a lead."
               : "Line items · GST invoice is attached on the trade line"}
           </p>
         </div>
-        {isSolar ? (
-          <QuoteTierToggle
-            value={tier}
-            onChange={setTier}
-            disabled={isPremiumFlow}
-          />
-        ) : null}
       </div>
 
       {isSolar ? (

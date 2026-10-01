@@ -9,7 +9,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { BuilderAccordionStep } from "@/components/quotations/builder-accordion";
 import { LeadNameAutocomplete } from "@/components/quotations/lead-name-autocomplete";
 import type { QuoteLeadOption } from "@/components/quotations/quote-customer-picker";
-import type { QuoteTier } from "@/components/quotations/quote-tier-toggle";
+import { QuoteTierToggle, type QuoteTier } from "@/components/quotations/quote-tier-toggle";
 import { SystemDetailsPanel } from "@/components/quotations/system-details-panel";
 import { OtherItemsPanel } from "@/components/quotations/other-items-panel";
 import { calcQuotationTotals, calcItemTotals } from "@/lib/quotations/quote-math";
@@ -163,6 +163,7 @@ export function QuotationBuilderForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [tier, setTier] = useState<QuoteTier>(quoteTier);
   const today = new Date().toISOString().slice(0, 10);
   const valid7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
@@ -385,13 +386,13 @@ export function QuotationBuilderForm({
 
   useEffect(() => {
     if (!selectedPanel || panelCount <= 0) return;
-    applyPerKwPricing(selectedPanel, panelCount, quoteTier, parseProjectType(projectType));
+    applyPerKwPricing(selectedPanel, panelCount, tier, parseProjectType(projectType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPanel?.id, panelCount, quoteTier, projectType]);
+  }, [selectedPanel?.id, panelCount, tier, projectType]);
 
   useEffect(() => {
     setValue("items", [...systemLineItems, ...additionalItems], { shouldValidate: true });
-    setValue("tierType", quoteTier);
+    setValue("tierType", tier);
     setValue("ratePerKwSnapshot", ratePerKw > 0 ? ratePerKw : null);
     setValue("netPayableAmount", netPayableAmount > 0 ? netPayableAmount : null);
     setValue("ratePackageId", null);
@@ -454,7 +455,7 @@ export function QuotationBuilderForm({
     panelMountType,
     meterPhaseLabel,
     isCommercial,
-    quoteTier,
+    tier,
     ratePerKw,
     netPayableAmount,
     setValue,
@@ -567,7 +568,7 @@ export function QuotationBuilderForm({
   function applyPerKwPricing(
     panel = selectedPanel,
     count = panelCount,
-    tier = quoteTier,
+    rateTier = tier,
     projType = parseProjectType(projectType)
   ) {
     if (!panel || count <= 0) {
@@ -585,7 +586,7 @@ export function QuotationBuilderForm({
       capacityLabel: capacityLabel || moduleCapacityLabel,
       panelCount: count,
       projectType: projType,
-      tier,
+      tier: rateTier,
     });
     setModuleCapacityLabel(capacityLabel);
     setSystemSizeKw(pricing.systemKw);
@@ -671,6 +672,15 @@ export function QuotationBuilderForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-white px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text-dark)]">Regular or Premium</p>
+          <p className="text-xs text-[var(--text-muted)]">
+            This picks the per-kW rate card used for the system price.
+          </p>
+        </div>
+        <QuoteTierToggle value={tier} onChange={setTier} />
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px] lg:items-start">
         <div className="space-y-4">
           <BuilderAccordionStep
@@ -802,7 +812,7 @@ export function QuotationBuilderForm({
             <SystemDetailsPanel
               panels={panels}
               projectType={parseProjectType(projectType)}
-              quoteTier={quoteTier}
+              quoteTier={tier}
               subsidyScheme={subsidyScheme}
               subsidyTotal={subsidyAmount}
               subsidyLabel={

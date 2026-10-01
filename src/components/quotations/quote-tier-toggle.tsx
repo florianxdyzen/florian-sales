@@ -17,8 +17,8 @@ export function QuoteTierToggle({
     <div className="inline-flex rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
       {(
         [
-          { id: "premium" as const, label: "Premium" },
           { id: "regular" as const, label: "Regular" },
+          { id: "premium" as const, label: "Premium" },
         ] as const
       ).map((opt) => (
         <button

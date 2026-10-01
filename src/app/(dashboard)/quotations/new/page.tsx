@@ -77,9 +77,7 @@ export default async function NewQuotationPage({
         <p className="text-sm text-[var(--text-muted)]">
           {kind === "non_solar"
             ? "Line-item quotation. Attach the GST invoice on the trade line."
-            : kind === "premium"
-              ? "Optional residential kit — premium per-kW rate card."
-              : "Optional residential kit — Regular per-kW rate card."}
+            : "Choose Regular or Premium, then price the kit per kW."}
         </p>
       </div>
       <NewQuotationWorkspace
