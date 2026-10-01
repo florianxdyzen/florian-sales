@@ -22,7 +22,7 @@ export function QuotationDetailActions({ quote }: { quote: QuotationRow }) {
       >
         ← Quotations
       </Link>
-      {editable && quote.template_kind !== "non_solar" && (
+      {editable && (
         <Link
           href={`/quotations/${quote.id}/edit`}
           className="inline-flex items-center justify-center rounded-lg border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--text-body)] hover:bg-[var(--bg)]"
@@ -78,11 +78,6 @@ export function QuotationSummaryCard({ quote }: { quote: QuotationRow }) {
             {quoteTemplateDisplayLabel(quote)} ·{" "}
             {QUOTE_STATUS_LABELS[quote.status]}
           </p>
-          {quote.template_kind === "non_solar" ? (
-            <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
-              Historical non-solar quote — read-only. New quotes are solar only.
-            </p>
-          ) : null}
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold text-[var(--text-dark)]">
             {quote.quotation_no}
           </h1>

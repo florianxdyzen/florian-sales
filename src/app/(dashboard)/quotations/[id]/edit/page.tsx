@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { QuotationBuilderForm } from "@/components/quotations/quotation-builder-form";
-import { getQuotation, listLeadsForQuote } from "@/actions/quotations";
+import { QuotationBuilderFormAppliance } from "@/components/quotations/quotation-builder-form-appliance";
+import { getQuotation, listCatalogItems, listLeadsForQuote } from "@/actions/quotations";
 import { getCatalogForQuotation } from "@/lib/quotations/data/items";
 import { getRateCardPanels } from "@/lib/quotations/data/rate-card";
 import { getRateCardInverters } from "@/lib/quotations/data/rate-card-inverters";
@@ -51,19 +51,27 @@ export default async function EditQuotationPage({
   );
 
   if (quote.template_kind === "non_solar") {
+    const [catalog, leads] = await Promise.all([
+      listCatalogItems("non_solar"),
+      listLeadsForQuote().catch(() => []),
+    ]);
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         {heading}
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          This is a historical non-solar quotation. It is read-only. Print still works; new quotes
-          are solar only.
-        </div>
-        <Link
-          href={`/quotations/${id}/print`}
-          className="inline-flex rounded-lg border border-[var(--border)] bg-white px-4 py-2 text-sm font-semibold"
-        >
-          Print / PDF
-        </Link>
+        <QuotationBuilderFormAppliance
+          customer={{
+            id: quote.lead_id,
+            name: quote.customer_name,
+            phone: quote.customer_phone ?? "",
+            address: quote.customer_address,
+            city: quote.customer_city,
+          }}
+          catalog={catalog}
+          leads={leads}
+          canAddLead={canAddLead}
+          canEditQuotationPricing={canEditQuotationPricing}
+          initial={quote}
+        />
       </div>
     );
   }

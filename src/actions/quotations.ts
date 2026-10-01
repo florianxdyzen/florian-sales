@@ -175,12 +175,15 @@ export async function getQuotation(id: string): Promise<QuotationRow> {
   return { ...data, items } as QuotationRow;
 }
 
-export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
+export async function upsertQuotation(
+  input: z.infer<typeof upsertSchema>
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const profile = await requireQuoteWrite();
-  const parsed = upsertSchema.parse(input);
-  if (parsed.templateKind === "non_solar" && !parsed.id) {
-    throw new Error("Non-solar quotations are no longer created. Use a solar quote.");
+  const parsedResult = upsertSchema.safeParse(input);
+  if (!parsedResult.success) {
+    return { ok: false, error: parsedResult.error.issues[0]?.message ?? "Invalid quotation" };
   }
+  const parsed = parsedResult.data;
   const supabase = await createClient();
 
   let lead: {
@@ -203,9 +206,9 @@ export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
       .eq("company_id", profile.company_id)
       .single();
 
-    if (leadError || !data) throw new Error("Lead not found");
+    if (leadError || !data) return { ok: false, error: "Lead not found" };
     if (data.sales_stage === "lost") {
-      throw new Error("Cannot create a quotation for a lost lead");
+      return { ok: false, error: "Cannot create a quotation for a lost lead" };
     }
     lead = data;
   }
@@ -221,9 +224,9 @@ export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
       ? parsed.customerCity?.trim() || null
       : lead?.city ?? null;
 
-  if (customerName.length < 2) throw new Error("Customer name is required");
+  if (customerName.length < 2) return { ok: false, error: "Customer name is required" };
   if (customerPhone.replace(/\D/g, "").length < 10) {
-    throw new Error("A valid customer phone is required");
+    return { ok: false, error: "A valid customer phone is required" };
   }
 
   const canPrice =
@@ -295,9 +298,9 @@ export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
       .eq("id", quotationId)
       .eq("company_id", profile.company_id)
       .maybeSingle();
-    if (!existing) throw new Error("Quotation not found");
+    if (!existing) return { ok: false, error: "Quotation not found" };
     if (existing.status === "accepted") {
-      throw new Error("Accepted quotations cannot be edited");
+      return { ok: false, error: "Accepted quotations cannot be edited" };
     }
 
     const { error: updError } = await supabase
@@ -326,7 +329,7 @@ export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
       })
       .eq("id", quotationId);
 
-    if (updError) throw new Error(updError.message);
+    if (updError) return { ok: false, error: updError.message };
 
     await supabase.from("quotation_items").delete().eq("quotation_id", quotationId);
   } else {
@@ -361,14 +364,14 @@ export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
       .select("id")
       .single();
 
-    if (createError || !created) throw new Error(createError?.message ?? "Create failed");
+    if (createError || !created) return { ok: false, error: createError?.message ?? "Create failed" };
     quotationId = created.id;
   }
 
   const { error: itemsError } = await supabase.from("quotation_items").insert(
     lines.map((l) => ({ ...l, quotation_id: quotationId }))
   );
-  if (itemsError) throw new Error(itemsError.message);
+  if (itemsError) return { ok: false, error: itemsError.message };
 
   // Advance lead to quoted on first save from survey_completed
   if (lead?.sales_stage === "survey_completed") {
@@ -407,7 +410,7 @@ export async function upsertQuotation(input: z.infer<typeof upsertSchema>) {
   revalidatePath("/pipeline");
   revalidatePath("/customers");
   revalidatePath(`/quotations/${quotationId}`);
-  return { id: quotationId! };
+  return { ok: true, id: quotationId! };
 }
 
 export async function acceptQuotation(quotationId: string) {

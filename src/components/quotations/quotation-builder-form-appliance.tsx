@@ -264,6 +264,10 @@ export function QuotationBuilderFormAppliance({
                 sort_order: idx,
               })),
             });
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
             router.push(`/quotations/${result.id}`);
             router.refresh();
           } catch (err) {
