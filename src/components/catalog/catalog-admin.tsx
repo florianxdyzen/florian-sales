@@ -287,33 +287,40 @@ export function CatalogAdmin({
           </div>
         </>
       )}
-      <div className="sm:col-span-2">
-        <Label>Image URL</Label>
-        <Input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="/brand/bom-premium/01-….png"
-        />
+      <div className="sm:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+        <Label>
+          {kind === "non_solar" ? "Photo" : "BOM photo"}
+        </Label>
+        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+          {kind === "non_solar"
+            ? "Optional. Shown on the B2B quotation line. Under 8 MB."
+            : "Shown on the solar BOM page for this option. Under 8 MB."}
+        </p>
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt=""
-            className="mt-2 h-16 w-16 rounded-lg border border-[var(--border-light)] bg-white object-contain"
+            className="mt-2 h-24 w-24 rounded-lg border border-[var(--border-light)] bg-white object-contain"
           />
         ) : null}
-      </div>
-      <div className="sm:col-span-2">
-        <Label>Upload image</Label>
+        {imageFile ? (
+          <p className="mt-2 text-xs font-medium text-[var(--text-dark)]">
+            Selected: {imageFile.name}
+          </p>
+        ) : null}
         <Input
+          className="mt-2"
           type="file"
           accept="image/*"
           onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
         />
-        <p className="mt-1 text-xs text-[var(--text-muted)]">
-          Optional. Images must be under 8 MB.
-          {imageFile ? ` Selected: ${imageFile.name}` : ""}
-        </p>
+        <Input
+          className="mt-2"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="Or paste an image URL"
+        />
       </div>
     </>
   );
@@ -325,7 +332,7 @@ export function CatalogAdmin({
         title="Catalogue"
         subtitle={
           canManage
-            ? "Manage brands, categories, and quote line items."
+            ? "Manage brands, categories, and quote line items. A photo on a solar or premium item is printed on the BOM."
             : "Browse active items used in quotations."
         }
         className="mb-0"

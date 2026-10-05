@@ -210,6 +210,83 @@ export function QuotationBuilderFormAppliance({
     setCustomerAddress(lead.address ?? "");
   }
 
+  function leaveQuote() {
+    router.push(linkedLeadId ? `/quotations?leadId=${linkedLeadId}` : "/quotations");
+  }
+
+  function saveDraftAndLeave() {
+    if (pending) return;
+    if (initial?.status === "accepted") {
+      leaveQuote();
+      return;
+    }
+    if (customerName.trim().length < 2 || customerPhone.trim().length < 10) {
+      leaveQuote();
+      return;
+    }
+    const draftLines =
+      lines.length > 0
+        ? lines
+        : [
+            {
+              key: "draft-line",
+              item_id: null,
+              sort_order: 0,
+              item_name_snapshot: "B2B item",
+              brand_snapshot: null,
+              model_snapshot: null,
+              quantity: 1,
+              unit: "pcs",
+              rate: 0,
+              gst_percent: 0,
+              discount_value: 0,
+              line_total: 0,
+            },
+          ];
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await upsertQuotation({
+          id: initial?.id,
+          leadId: linkedLeadId,
+          customerName,
+          customerPhone,
+          customerCity: customerCity || null,
+          customerAddress: customerAddress || null,
+          templateKind: "non_solar",
+          status: "draft",
+          systemSizeKw: null,
+          meterCharges: 0,
+          subsidy: 0,
+          discountPercent: Number(discountPercent) || 0,
+          discountValue: Number(discountValue) || 0,
+          notes: null,
+          terms: null,
+          items: draftLines.map((l, idx) => ({
+            item_id: l.item_id,
+            item_name_snapshot: l.item_name_snapshot,
+            brand_snapshot: l.brand_snapshot,
+            model_snapshot: l.model_snapshot,
+            quantity: Number(l.quantity) > 0 ? Number(l.quantity) : 1,
+            unit: l.unit || "pcs",
+            rate: Number(l.rate) || 0,
+            gst_percent: Number(l.gst_percent) || 0,
+            discount_value: Number(l.discount_value) || 0,
+            sort_order: idx,
+          })),
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        leaveQuote();
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to save draft");
+      }
+    });
+  }
+
   function onCustomerNameChange(name: string) {
     setCustomerName(name);
     if (linkedLeadId) {
@@ -493,8 +570,8 @@ export function QuotationBuilderFormAppliance({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : initial?.id ? "Update quotation" : "Create quotation"}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => router.back()}>
-          Cancel
+        <Button type="button" variant="secondary" disabled={pending} onClick={saveDraftAndLeave}>
+          Back
         </Button>
       </div>
     </form>

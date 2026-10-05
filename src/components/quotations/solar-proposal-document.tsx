@@ -19,7 +19,7 @@ import {
   SolarBomMaterialPages,
 } from "@/components/quotations/solar-bom-material-pages";
 import { overlayQuoteEquipmentOnBom, type BomTier } from "@/lib/quotations/tier-bom";
-import { projectTypeLabel } from "@/lib/quotations/project-type";
+import { parseProjectType, projectTypeLabel } from "@/lib/quotations/project-type";
 import { resolveModuleBrandImageUrl } from "@/lib/quotations/module-brand-logos";
 import { PANEL_MOUNT_TYPE_LABELS, parsePanelMountType } from "@/lib/quotations/commercial";
 import { normalizeInverterBrand } from "@/lib/quotations/inverter-brand";
@@ -54,6 +54,27 @@ function panelTypeFromName(name: string) {
   if (/perc/i.test(name)) return "PERC";
   if (/bifacial/i.test(name)) return "Bifacial";
   return name?.trim() || "Solar Panel";
+}
+
+function warrantyRowsForQuote(
+  rows: Array<{ label: string; value: string }>,
+  input: {
+    tier: "premium" | "regular";
+    projectType?: string | null;
+    structureWarranty?: string | null;
+  }
+) {
+  if (input.tier !== "regular" || parseProjectType(input.projectType) !== "residential") {
+    return rows;
+  }
+  const value = input.structureWarranty?.trim();
+  if (!value || rows.some((row) => row.label === "Structure warranty")) return rows;
+  const next = [...rows];
+  const maintenanceAt = next.findIndex((row) => /maintenance/i.test(row.label));
+  const structure = { label: "Structure warranty", value };
+  if (maintenanceAt >= 0) next.splice(maintenanceAt, 0, structure);
+  else next.push(structure);
+  return next;
 }
 
 function meterPhaseDisplay(data: ProposalInput): string {
@@ -190,6 +211,11 @@ export function SolarProposalDocument({
         ? "regular"
         : "premium";
   const tierCopy = quoteTierCopy(effectiveTier);
+  const warrantyRows = warrantyRowsForQuote(tierCopy.warrantyRows, {
+    tier: effectiveTier,
+    projectType: data.projectType,
+    structureWarranty: template.structureWarranty,
+  });
   const systemKwDisplay =
     data.systemSizeKw != null && Number(data.systemSizeKw) > 0
       ? Number(data.systemSizeKw)
@@ -416,8 +442,8 @@ export function SolarProposalDocument({
             </div>
             <div className="sp-bom-section">
               <h3>Warranty &amp; service</h3>
-              <div className={`sp-bom-grid ${tierCopy.warrantyRows.length > 3 ? "four" : "two"}`}>
-                {tierCopy.warrantyRows.map((row) => (
+              <div className={`sp-bom-grid ${warrantyRows.length > 3 ? "four" : "two"}`}>
+                {warrantyRows.map((row) => (
                   <div key={row.label} className="sp-bom-field">
                     <label>{row.label}</label>
                     <strong>{row.value}</strong>

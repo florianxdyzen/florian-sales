@@ -91,10 +91,21 @@ export function calcPerKwQuotePricing(input: {
   panelCount: number;
   projectType: ProjectType;
   tier: QuoteTier;
+  /** Quote-level watt peak. Falls back to the panel catalogue when omitted. */
+  panelWattage?: number | null;
+  /** Quote-level ₹/kW. Falls back to the rate card when omitted. */
+  ratePerKw?: number | null;
 }) {
-  const panelWattage = resolvePanelWattage(input.company, input.capacityLabel);
+  const panelWattage =
+    input.panelWattage != null && input.panelWattage > 0
+      ? input.panelWattage
+      : resolvePanelWattage(input.company, input.capacityLabel);
+  const catalogRate = getPerKwRate(input.company, input.projectType, input.tier);
+  const ratePerKw =
+    input.ratePerKw != null && Number.isFinite(input.ratePerKw)
+      ? input.ratePerKw
+      : catalogRate;
   const systemKw = calcSystemKw(panelWattage, input.panelCount);
-  const ratePerKw = getPerKwRate(input.company, input.projectType, input.tier);
   const systemCost = ratePerKw ? calcTurnkeySystemCost(systemKw, ratePerKw) : 0;
 
   return {

@@ -72,8 +72,10 @@ function MaterialTable({
               <td className="sp-bom-mat-num">{rowNum}</td>
               <td className="sp-bom-mat-img-cell">
                 {img ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="sp-bom-mat-img" src={img} alt="" />
+                  <span className="sp-bom-mat-img-frame">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="sp-bom-mat-img" src={img} alt="" width={44} height={44} />
+                  </span>
                 ) : null}
               </td>
               <td>

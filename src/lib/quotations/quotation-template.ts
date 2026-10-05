@@ -32,6 +32,8 @@ export type SolarProposalTemplate = {
   panelWarranty: string;
   panelPerfWarranty: string;
   inverterWarranty: string;
+  /** Printed on regular residential proposals. */
+  structureWarranty: string;
 
   yieldPerKw: number;
   performanceRatio: number;
@@ -165,6 +167,7 @@ export const DEFAULT_SOLAR_TEMPLATE: SolarProposalTemplate = {
   panelWarranty: "12 Years product",
   panelPerfWarranty: "30 Years performance",
   inverterWarranty: "10 Years",
+  structureWarranty: "5 years",
 
   yieldPerKw: 1440,
   performanceRatio: 100,
@@ -454,6 +457,7 @@ export function normalizeSolarTemplate(
     panelWarranty: asString(src.panelWarranty, d.panelWarranty),
     panelPerfWarranty: asString(src.panelPerfWarranty, d.panelPerfWarranty),
     inverterWarranty: asString(src.inverterWarranty, d.inverterWarranty),
+    structureWarranty: asString(src.structureWarranty, d.structureWarranty),
 
     yieldPerKw: asNumber(src.yieldPerKw, d.yieldPerKw),
     performanceRatio: asNumber(src.performanceRatio, d.performanceRatio),

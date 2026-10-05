@@ -39,7 +39,7 @@ import {
   normalizeInverterBrand,
   type InverterBrand,
 } from "@/lib/quotations/inverter-brand";
-import { calcPerKwQuotePricing } from "@/lib/quotations/per-kw-pricing";
+import { calcPerKwQuotePricing, getPerKwRate, resolvePanelWattage } from "@/lib/quotations/per-kw-pricing";
 import {
   calcQuotationSubsidy,
   meterTypeToQuoteDefaults,
@@ -133,6 +133,13 @@ function findInverterFromDefaults(defaults?: Partial<QuotationPayload>): {
     inverterTypeName: typeName,
     inverterSizeLabel: sizeLabel,
   };
+}
+
+function wattsFromCapacity(label: string | null | undefined): number {
+  const match = (label ?? "").match(/(\d{2,4})/);
+  if (!match) return 0;
+  const n = Number(match[1]);
+  return n > 0 ? n : 0;
 }
 
 export function QuotationBuilderForm({
@@ -240,6 +247,9 @@ export function QuotationBuilderForm({
     parsePanelMountType(defaultValues?.panelMountType)
   );
   const [ratePerKw, setRatePerKw] = useState(Number(defaultValues?.ratePerKwSnapshot ?? 0));
+  const [wattPeak, setWattPeak] = useState(() => wattsFromCapacity(initialRate.moduleCapacityLabel));
+  const wattTouched = useRef(wattsFromCapacity(initialRate.moduleCapacityLabel) > 0);
+  const rateTouched = useRef(Number(defaultValues?.ratePerKwSnapshot ?? 0) > 0);
 
   const initialMeterType = quoteMeterTypeFromFields(
     defaultValues?.projectType ?? "residential",
@@ -287,7 +297,7 @@ export function QuotationBuilderForm({
     },
   });
 
-  const { register, setValue, watch, handleSubmit, formState: { errors } } = form;
+  const { register, setValue, watch, handleSubmit, getValues, formState: { errors } } = form;
   const items = watch("items");
   const siteCharges = watch("siteCharges");
   const totals = useMemo(() => calcQuotationTotals(items || [], siteCharges), [items, siteCharges]);
@@ -385,10 +395,20 @@ export function QuotationBuilderForm({
   }
 
   useEffect(() => {
+    if (!selectedPanel || wattTouched.current) return;
+    setWattPeak(resolvePanelWattage(selectedPanel, panelCapacityLabel(selectedPanel)));
+  }, [selectedPanel]);
+
+  useEffect(() => {
+    if (!selectedPanel || rateTouched.current) return;
+    setRatePerKw(getPerKwRate(selectedPanel, parseProjectType(projectType), tier) ?? 0);
+  }, [selectedPanel, projectType, tier]);
+
+  useEffect(() => {
     if (!selectedPanel || panelCount <= 0) return;
     applyPerKwPricing(selectedPanel, panelCount, tier, parseProjectType(projectType));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPanel?.id, panelCount, tier, projectType]);
+  }, [selectedPanel?.id, panelCount, tier, projectType, wattPeak, ratePerKw]);
 
   useEffect(() => {
     setValue("items", [...systemLineItems, ...additionalItems], { shouldValidate: true });
@@ -574,7 +594,6 @@ export function QuotationBuilderForm({
     if (!panel || count <= 0) {
       if (count <= 0) {
         setSystemSizeKw(0);
-        setRatePerKw(0);
         setSystemCost(0);
         setMinSalePrice(0);
       }
@@ -587,10 +606,14 @@ export function QuotationBuilderForm({
       panelCount: count,
       projectType: projType,
       tier: rateTier,
+      panelWattage: wattTouched.current ? wattPeak : null,
+      ratePerKw: rateTouched.current ? ratePerKw : null,
     });
-    setModuleCapacityLabel(capacityLabel);
+    setModuleCapacityLabel(
+      pricing.panelWattage > 0 ? `${Math.round(pricing.panelWattage)}W` : capacityLabel
+    );
     setSystemSizeKw(pricing.systemKw);
-    setRatePerKw(pricing.ratePerKw);
+    if (!rateTouched.current) setRatePerKw(pricing.ratePerKw);
     setSystemCost(pricing.systemCost);
     setMinSalePrice(pricing.minSalePrice);
     setDiscountAmount(
@@ -602,14 +625,28 @@ export function QuotationBuilderForm({
     setPanelId(id);
     const panel = panels.find((p) => p.id === id) ?? null;
     setModuleTypeName(panel?.panel_name ?? "");
-    setModuleCapacityLabel(panel ? panelCapacityLabel(panel) : "");
+    if (!wattTouched.current) {
+      const nextWatt = panel ? resolvePanelWattage(panel, panelCapacityLabel(panel)) : 0;
+      setWattPeak(nextWatt);
+      setModuleCapacityLabel(nextWatt > 0 ? `${nextWatt}W` : panel ? panelCapacityLabel(panel) : "");
+    }
     setSystemCost(0);
     setMinSalePrice(0);
     setDiscountPercent(0);
     setDiscountAmount(0);
     setSystemSizeKw(0);
     setPanelCount(0);
-    setRatePerKw(0);
+    if (!rateTouched.current) setRatePerKw(0);
+  }
+
+  function onWattPeakChange(watts: number) {
+    wattTouched.current = true;
+    setWattPeak(watts);
+  }
+
+  function onRatePerKwChange(rate: number) {
+    rateTouched.current = true;
+    setRatePerKw(rate);
   }
 
   function onPanelCountChange(count: number) {
@@ -622,6 +659,67 @@ export function QuotationBuilderForm({
 
   function goToSystem() {
     if (customerComplete) setOpenSection("system");
+  }
+
+  function leaveQuote() {
+    const leadId = linkedLeadId || defaultValues?.leadId;
+    router.push(leadId ? `/quotations?leadId=${leadId}` : "/quotations");
+  }
+
+  function saveDraftAndLeave() {
+    if (pending) return;
+    if (defaultValues?.status === "accepted") {
+      leaveQuote();
+      return;
+    }
+    const name = (customerName ?? "").trim();
+    const phone = (customerPhone ?? "").trim();
+    if (!name || phone.length < 10) {
+      leaveQuote();
+      return;
+    }
+    const values = getValues();
+    const filled = [...systemLineItems, ...additionalItems].filter(
+      (item) => item.itemName.trim() && Number(item.quantity) > 0
+    );
+    const items =
+      filled.length > 0
+        ? filled
+        : [
+            {
+              itemName: moduleTypeName.trim() || "Solar system",
+              brand: moduleTypeName.trim(),
+              model: moduleCapacityLabel.trim(),
+              quantity: 1,
+              unit: "set",
+              rate: Math.max(0, Number(systemCost) || 0),
+              gstPercent: 0,
+              discountValue: 0,
+            },
+          ];
+    setError("");
+    startTransition(async () => {
+      try {
+        const saved = await upsertQuotation({
+          ...values,
+          ...(defaultValues?.id ? { id: defaultValues.id } : {}),
+          items,
+          status: "draft",
+          customerName: name,
+          customerPhone: phone,
+          notes: values.notes ?? "",
+          terms: values.terms ?? "",
+        });
+        if (!saved.ok) {
+          setError(saved.error);
+          return;
+        }
+        leaveQuote();
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to save draft");
+      }
+    });
   }
 
   const submit = handleSubmit(
@@ -829,6 +927,10 @@ export function QuotationBuilderForm({
               systemSizeKw={systemSizeKw}
               panelCount={panelCount}
               ratePerKw={ratePerKw}
+              wattPeak={wattPeak}
+              canEditRate={canEditQuotationPricing}
+              onWattPeakChange={onWattPeakChange}
+              onRatePerKwChange={onRatePerKwChange}
               inverterBrand={inverterTypeName}
               inverterSize={inverterSizeLabelState}
               panelMountType={panelMountType}
@@ -1169,6 +1271,15 @@ export function QuotationBuilderForm({
             <Button disabled={!canSave} type="submit" className="w-full min-h-11">
               {pending ? "Saving…" : defaultValues?.id ? "Update quotation" : "Save quotation"}
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              className="w-full min-h-11"
+              onClick={saveDraftAndLeave}
+            >
+              Back
+            </Button>
             {defaultValues?.id && (
               <Link
                 href={`/quotations/${defaultValues.id}/print`}
@@ -1189,6 +1300,15 @@ export function QuotationBuilderForm({
             <p className="text-lg font-bold text-slate-900">{inr(totals.total)}</p>
             {error && <p className="truncate text-xs text-red-600">{error}</p>}
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pending}
+            className="min-h-11 shrink-0 px-4"
+            onClick={saveDraftAndLeave}
+          >
+            Back
+          </Button>
           <Button disabled={!canSave} type="submit" className="min-h-11 shrink-0 px-5">
             {pending ? "Saving…" : defaultValues?.id ? "Update" : "Save"}
           </Button>

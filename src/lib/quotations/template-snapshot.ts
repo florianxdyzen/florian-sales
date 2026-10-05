@@ -17,6 +17,7 @@ const SNAPSHOT_KEYS = [
   "panelWarranty",
   "panelPerfWarranty",
   "inverterWarranty",
+  "structureWarranty",
   "termsText",
   "paymentDetailsIntro",
   "loanPaymentNote",

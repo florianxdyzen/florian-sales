@@ -229,9 +229,11 @@ export const SOLAR_PROPOSAL_CSS = `
 .sp-bom-brand-logo {
   height: 28px;
   width: auto;
-  max-width: 120px;
+  max-width: 88px;
+  max-height: 28px;
   object-fit: contain;
   display: block;
+  flex-shrink: 0;
 }
 .sp-bom-brand { font-size: 11px; font-weight: 700; color: var(--sp-primary); letter-spacing: .06em; text-transform: uppercase; }
 
@@ -532,6 +534,8 @@ export const SOLAR_PROPOSAL_CSS = `
 }
 .sp-bom-material-table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin-top: 6px;
   font-size: 12px;
@@ -548,29 +552,57 @@ export const SOLAR_PROPOSAL_CSS = `
   text-transform: uppercase;
   border-bottom: 2px solid rgba(30, 57, 112, 0.12);
 }
-.sp-bom-material-table th:last-child { text-align: right; width: 80px; }
+.sp-bom-material-table th:nth-child(1) { width: 28px; }
+.sp-bom-material-table th:nth-child(2) { width: 52px; }
+.sp-bom-material-table th:last-child { text-align: right; width: 72px; }
 .sp-bom-material-table td {
   padding: 6px 8px;
   border-bottom: 1px solid rgba(30, 57, 112, 0.08);
   vertical-align: middle;
 }
 .sp-bom-mat-num {
-  width: 32px;
+  width: 28px;
   font-weight: 700;
   color: var(--sp-navy);
   text-align: center;
   font-size: 12px;
 }
-.sp-bom-mat-img-cell { width: 72px; }
+.sp-bom-mat-img-cell {
+  width: 52px;
+  max-width: 52px;
+  overflow: hidden;
+}
+.sp-bom-mat-img-frame {
+  display: block;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+}
 .sp-bom-mat-img {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
+  max-width: 44px;
+  max-height: 44px;
   object-fit: contain;
+  object-position: center;
   display: block;
 }
-.sp-bom-mat-name { font-weight: 700; color: #0f172a; line-height: 1.35; font-size: 12px; }
-.sp-bom-mat-meta { font-size: 10px; color: #64748b; margin-top: 2px; line-height: 1.3; }
+.sp-bom-mat-name {
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.sp-bom-mat-meta {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
 .sp-bom-mat-qty {
+  width: 72px;
   text-align: right;
   font-weight: 700;
   white-space: nowrap;

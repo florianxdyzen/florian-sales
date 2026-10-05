@@ -35,6 +35,10 @@ export function SystemDetailsPanel({
   systemSizeKw,
   panelCount,
   ratePerKw = 0,
+  wattPeak = 0,
+  canEditRate = false,
+  onWattPeakChange,
+  onRatePerKwChange,
   inverterBrand,
   inverterSize,
   panelMountType = null,
@@ -56,6 +60,10 @@ export function SystemDetailsPanel({
   systemSizeKw: number;
   panelCount: number;
   ratePerKw?: number;
+  wattPeak?: number;
+  canEditRate?: boolean;
+  onWattPeakChange?: (watts: number) => void;
+  onRatePerKwChange?: (rate: number) => void;
   inverterBrand: InverterBrand | "";
   inverterSize: string;
   panelMountType?: PanelMountType | null;
@@ -98,8 +106,47 @@ export function SystemDetailsPanel({
             <p className="mt-0.5 text-brand-800/80">
               {activeRatePerKw > 0
                 ? `${inr(activeRatePerKw)} / kW (GST incl.)`
-                : "Configure rates in Catalog → Rate card"}
+                : "Enter a price per kW, or set it on the rate card"}
             </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel>Watt peak</FieldLabel>
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={wattPeak || ""}
+                onChange={(e) =>
+                  onWattPeakChange?.(Math.max(0, Math.round(Number(e.target.value) || 0)))
+                }
+                className="min-h-11"
+                placeholder="e.g. 540"
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                Watts per panel. System kW is watt peak × panel count ÷ 1000.
+              </p>
+            </div>
+            <div>
+              <FieldLabel>Price per kW (₹)</FieldLabel>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={ratePerKw || ""}
+                disabled={!canEditRate}
+                onChange={(e) =>
+                  onRatePerKwChange?.(Math.max(0, Number(e.target.value) || 0))
+                }
+                className="min-h-11"
+                placeholder="e.g. 52000"
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                {canEditRate
+                  ? "GST inclusive. Prefilled from the rate card."
+                  : "GST inclusive. Set by the rate card."}
+              </p>
+            </div>
           </div>
           <div>
             <FieldLabel>Number of panels</FieldLabel>

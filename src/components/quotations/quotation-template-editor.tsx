@@ -148,8 +148,8 @@ export function QuotationTemplateEditor({ initial, company, bankDefaults, canEdi
     <div className="space-y-6">
       <EditorNotice message={message} error={error} onDismiss={() => { setMessage(""); setError(""); }} />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(340px,420px)_1fr]">
-        <div className="flex max-h-[calc(100vh-8rem)] flex-col gap-4 rounded-xl border border-[var(--border)] bg-white p-5 shadow-sm">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(340px,420px)_1fr]">
+        <div className="flex max-h-[calc(100vh-8rem)] flex-col gap-4 rounded-xl border border-[var(--border)] bg-white p-5 shadow-sm xl:sticky xl:top-28 xl:z-20 xl:self-start">
           <div className="shrink-0">
             <h2 className="text-sm font-semibold text-[var(--text-dark)]">Solar proposal template</h2>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -456,6 +456,16 @@ export function QuotationTemplateEditor({ initial, company, bankDefaults, canEdi
                   disabled={!canEdit}
                 />
               </div>
+              <Field
+                label="Structure warranty"
+                value={form.structureWarranty}
+                onChange={(v) => setField("structureWarranty", v)}
+                disabled={!canEdit}
+                placeholder="5 years"
+              />
+              <p className="text-xs text-[var(--text-muted)]">
+                Shown on regular residential quotations, under Warranty &amp; service.
+              </p>
             </div>
           )}
 
