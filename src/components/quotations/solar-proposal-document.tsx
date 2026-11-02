@@ -12,10 +12,7 @@ import {
   type ProposalLineItem,
 } from "@/lib/quotations/solar-proposal-calculations";
 import {
-  BomMaterialNote,
-  BomMaterialTable,
   PreviousWorkSection,
-  SUMMARY_PAGE_ITEM_CAP,
   SolarBomMaterialPages,
 } from "@/components/quotations/solar-bom-material-pages";
 import { overlayQuoteEquipmentOnBom, type BomTier } from "@/lib/quotations/tier-bom";
@@ -238,12 +235,9 @@ export function SolarProposalDocument({
     inverterTypeName: inverterBrand,
     inverterSizeLabel: inverterSizeDisplay,
   });
-  const inlineBomItems =
-    bomWithSelection.length > 0 && bomWithSelection.length <= SUMMARY_PAGE_ITEM_CAP
-      ? bomWithSelection
-      : [];
-  const pagedBomItems =
-    bomWithSelection.length > SUMMARY_PAGE_ITEM_CAP ? bomWithSelection : [];
+  // The system page is a fixed A4 sheet. Drawing the materials list under those
+  // sections clips it, so the list always gets its own page.
+  const pagedBomItems = bomWithSelection;
   const yearSavings = Array.from({ length: 15 }, (_, index) => {
     return calc.annualSav * Math.pow(1 + template.escalation / 100, index);
   });
@@ -451,20 +445,6 @@ export function SolarProposalDocument({
                 ))}
               </div>
             </div>
-            {inlineBomItems.length > 0 ? (
-              <div className="sp-bom-material-inline">
-                <h3 className="sp-subhead">
-                  {bomTier === "regular" ? "List of materials" : "Components"}
-                </h3>
-                <BomMaterialTable
-                  items={inlineBomItems}
-                  startIndex={0}
-                  tier={bomTier}
-                  moduleBrand={panelBrand}
-                />
-                <BomMaterialNote />
-              </div>
-            ) : null}
             {pagedBomItems.length === 0 ? (
               <PreviousWorkSection
                 heading={template.previousWorkTitle || "Previous Work"}
@@ -478,7 +458,7 @@ export function SolarProposalDocument({
       <SolarBomMaterialPages
         items={pagedBomItems}
         tier={bomTier}
-        title={bomTier === "regular" ? "List of materials" : "Component list"}
+        title="Bill of materials"
         moduleBrand={panelBrand}
         previousWorkTitle={template.previousWorkTitle}
         previousWorkPhotos={template.previousWorkPhotos}
