@@ -5,7 +5,7 @@
 -- Intended for a dedicated Cloud project (schema public).
 -- Do not apply this file to the FRS or Florian inventory database.
 --
--- Generated from 58 files in supabase/migrations/
+-- Generated from 59 files in supabase/migrations/
 -- Includes:
 --   - 001_init.sql
 --   - 002_lms.sql
@@ -65,6 +65,7 @@
 --   - 060_discovery_lock.sql
 --   - 061_view_profit.sql
 --   - 062_rate_card_inverter_rls.sql
+--   - 063_quotation_bom_items.sql
 -- ============================================================
 
 
@@ -4761,3 +4762,24 @@ CREATE POLICY rate_card_inverters_manage ON rate_card_inverters FOR ALL
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON rate_card_inverters TO authenticated;
 GRANT ALL ON rate_card_inverters TO service_role;
+
+
+-- ############################################################
+-- >>> 063_quotation_bom_items.sql
+-- ############################################################
+
+-- Solar quotation bill of materials.
+-- bom_items: this quotation only.
+-- last_bom_items: the list used to start the next solar quotation.
+
+ALTER TABLE quotations
+  ADD COLUMN IF NOT EXISTS bom_items JSONB;
+
+ALTER TABLE quotation_company_settings
+  ADD COLUMN IF NOT EXISTS last_bom_items JSONB;
+
+COMMENT ON COLUMN quotations.bom_items IS
+  'Solar materials list for this quotation (component, spec, qty, make, image). Null uses the Florian sample list.';
+
+COMMENT ON COLUMN quotation_company_settings.last_bom_items IS
+  'Last solar materials list saved when "this quotation only" is off. Null uses the Florian sample list.';

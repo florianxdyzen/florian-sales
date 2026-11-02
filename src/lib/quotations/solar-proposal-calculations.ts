@@ -13,6 +13,8 @@ export type ProposalLineItem = {
   line_total: number;
   image_url_snapshot?: string | null;
   brand_image_url_snapshot?: string | null;
+  /** Printed quantity when it is words (As per design) rather than a number. */
+  qty_label?: string | null;
 };
 
 export type ProposalInput = {

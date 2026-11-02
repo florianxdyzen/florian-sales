@@ -133,6 +133,7 @@ export function overlayQuoteEquipmentOnBom(
   if (!panelBrand && !inverterBrand) return items;
 
   return items.map((item) => {
+    if (item.qty_label) return item;
     const num = bomLineNumber(item.model_snapshot);
     const isModule =
       num === "01" ||

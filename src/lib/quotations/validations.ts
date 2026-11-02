@@ -98,6 +98,23 @@ export const quotationSchema = z.object({
   ratePerKwSnapshot: z.coerce.number().nonnegative().optional().nullable(),
   /** system cost after discount minus subsidy */
   netPayableAmount: z.coerce.number().nonnegative().optional().nullable(),
+  /** Solar materials list. Omitted leaves the saved list unchanged. */
+  bomItems: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        component: z.string().min(1),
+        specification: z.string().default(""),
+        unit: z.string().default(""),
+        quantity: z.string().default(""),
+        make: z.string().default(""),
+        imageUrl: z.string().default(""),
+      })
+    )
+    .max(24)
+    .optional(),
+  /** When false, this list also becomes the last-used solar BOM. */
+  bomQuoteOnly: z.boolean().optional(),
 });
 
 export type QuotationPayload = z.infer<typeof quotationSchema>;

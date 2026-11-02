@@ -15,6 +15,7 @@ import type { CatalogItem as SolarCatalogItem } from "@/lib/quotations/catalog-i
 import type { RateCardPanel } from "@/lib/quotations/rate-card-panels";
 import type { RateCardInverter } from "@/lib/quotations/rate-card-inverters";
 import type { DEFAULT_SOLAR_TEMPLATE } from "@/lib/quotations/quotation-template";
+import type { FlorianBomItem } from "@/lib/quotations/sample-bom";
 import { meterTypeToQuoteDefaults } from "@/lib/quotations/subsidy";
 import { parseMeterType } from "@/lib/domain/lead-profile";
 
@@ -54,6 +55,7 @@ export function NewQuotationWorkspace({
   initialLead = null,
   initialKind = "solar",
   proposalTemplate,
+  initialBomItems = null,
 }: {
   leads: QuoteLeadOption[];
   catalog: CatalogItem[];
@@ -67,6 +69,7 @@ export function NewQuotationWorkspace({
   initialLead?: QuoteLeadOption | null;
   initialKind?: QuoteTemplateKind;
   proposalTemplate?: typeof DEFAULT_SOLAR_TEMPLATE;
+  initialBomItems?: FlorianBomItem[] | null;
 }) {
   const kind = initialKind;
   const isSolar = usesSolarRateCardBuilder(kind);
@@ -110,6 +113,7 @@ export function NewQuotationWorkspace({
           canEditQuotationPricing={canEditQuotationPricing}
           quoteTier={tier}
           proposalTemplate={proposalTemplate}
+          initialBomItems={initialBomItems}
           defaultValues={{
             leadId: initialCustomer.id ?? undefined,
             customerName: initialCustomer.name,

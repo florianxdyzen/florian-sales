@@ -186,6 +186,7 @@ export type QuotationRow = {
   rate_per_kw_snapshot?: number | null;
   net_payable_amount?: number | null;
   template_snapshot?: unknown;
+  bom_items?: unknown;
   items?: QuotationItemRow[];
 };
 

@@ -10,6 +10,7 @@ import { BuilderAccordionStep } from "@/components/quotations/builder-accordion"
 import { LeadNameAutocomplete } from "@/components/quotations/lead-name-autocomplete";
 import type { QuoteLeadOption } from "@/components/quotations/quote-customer-picker";
 import { QuoteTierToggle, type QuoteTier } from "@/components/quotations/quote-tier-toggle";
+import { FlorianBomPanel } from "@/components/quotations/florian-bom-panel";
 import { SystemDetailsPanel } from "@/components/quotations/system-details-panel";
 import { OtherItemsPanel } from "@/components/quotations/other-items-panel";
 import { calcQuotationTotals, calcItemTotals } from "@/lib/quotations/quote-math";
@@ -41,6 +42,11 @@ import {
 } from "@/lib/quotations/inverter-brand";
 import { calcPerKwQuotePricing, getPerKwRate, resolvePanelWattage } from "@/lib/quotations/per-kw-pricing";
 import {
+  cloneFlorianSampleBom,
+  parseFlorianBom,
+  type FlorianBomItem,
+} from "@/lib/quotations/sample-bom";
+import {
   calcQuotationSubsidy,
   meterTypeToQuoteDefaults,
   parseSubsidyScheme,
@@ -63,7 +69,7 @@ import {
   type PanelMountType,
 } from "@/lib/quotations/commercial";
 
-type OpenSection = "customer" | "system" | "other" | "quote" | null;
+type OpenSection = "customer" | "system" | "materials" | "other" | "quote" | null;
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
@@ -153,6 +159,7 @@ export function QuotationBuilderForm({
   meterCharges = DEFAULT_SOLAR_TEMPLATE.meterCharges,
   quoteTier = "premium",
   proposalTemplate,
+  initialBomItems = null,
 }: {
   catalog: CatalogItem[];
   panels: RateCardPanel[];
@@ -166,6 +173,8 @@ export function QuotationBuilderForm({
   meterCharges?: typeof DEFAULT_SOLAR_TEMPLATE.meterCharges;
   quoteTier?: QuoteTier;
   proposalTemplate?: SolarProposalTemplate;
+  /** Last-used list for a new solar quote. Ignored when editing a saved quote. */
+  initialBomItems?: FlorianBomItem[] | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -247,6 +256,13 @@ export function QuotationBuilderForm({
     parsePanelMountType(defaultValues?.panelMountType)
   );
   const [ratePerKw, setRatePerKw] = useState(Number(defaultValues?.ratePerKwSnapshot ?? 0));
+  const [bomItems, setBomItems] = useState<FlorianBomItem[]>(() => {
+    const saved = parseFlorianBom(defaultValues?.bomItems);
+    if (saved) return saved;
+    if (defaultValues?.id) return cloneFlorianSampleBom();
+    return initialBomItems ?? cloneFlorianSampleBom();
+  });
+  const [bomQuoteOnly, setBomQuoteOnly] = useState(true);
   const [wattPeak, setWattPeak] = useState(() => wattsFromCapacity(initialRate.moduleCapacityLabel));
   const wattTouched = useRef(wattsFromCapacity(initialRate.moduleCapacityLabel) > 0);
   const rateTouched = useRef(Number(defaultValues?.ratePerKwSnapshot ?? 0) > 0);
@@ -709,6 +725,8 @@ export function QuotationBuilderForm({
           customerPhone: phone,
           notes: values.notes ?? "",
           terms: values.terms ?? "",
+          bomItems,
+          bomQuoteOnly,
         });
         if (!saved.ok) {
           setError(saved.error);
@@ -739,6 +757,8 @@ export function QuotationBuilderForm({
         status: "draft" as const,
         notes: "",
         terms: "",
+        bomItems,
+        bomQuoteOnly,
       };
       setError("");
       startTransition(async () => {
@@ -1047,6 +1067,21 @@ export function QuotationBuilderForm({
                   : "Select panel, count, inverter make + size, and meter phase."}
               </p>
             )}
+          </BuilderAccordionStep>
+
+          <BuilderAccordionStep
+            title="Bill of materials"
+            subtitle="8 items"
+            open={openSection === "materials"}
+            onToggle={() => toggleSection("materials")}
+            complete={bomItems.every((row) => row.component.trim() && row.imageUrl.trim())}
+          >
+            <FlorianBomPanel
+              items={bomItems}
+              quoteOnly={bomQuoteOnly}
+              onItemsChange={setBomItems}
+              onQuoteOnlyChange={setBomQuoteOnly}
+            />
           </BuilderAccordionStep>
 
           <BuilderAccordionStep

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getQuotation, listBomCatalogItems } from "@/actions/quotations";
+import { getQuotation } from "@/actions/quotations";
 import { PrintToolbar } from "@/components/quotations/print-toolbar";
 import {
   ApplianceQuotationDocument,
@@ -11,7 +11,13 @@ import {
   buildQuotationPrintData,
   resolveQuotationTemplate,
 } from "@/lib/quotations/quotation-print";
-import { buildTierBomPrintLines, tierFromQuote } from "@/lib/quotations/tier-bom";
+import { tierFromQuote } from "@/lib/quotations/tier-bom";
+import {
+  cloneFlorianSampleBom,
+  florianBomPrintLines,
+  parseFlorianBom,
+  presentFlorianBom,
+} from "@/lib/quotations/sample-bom";
 import {
   resolvePrintTemplateKind,
   usesApplianceProposalPrint,
@@ -59,17 +65,14 @@ export default async function QuotationPrintPage({
 
   if (usesSolarProposalPrint(printKind)) {
     const bomTier = tierFromQuote(quote);
-    const catalog = await listBomCatalogItems().catch(() => []);
-    const bomMaterialItems = buildTierBomPrintLines(catalog, {
-      tier: bomTier,
-      panelCount: quote.panel_count,
-      systemSizeKw: quote.system_size_kw,
-      moduleTypeName: quote.module_type_name,
-      moduleCompanyName: quote.module_company_name,
-      moduleCapacityLabel: quote.module_capacity_label,
-      inverterTypeName: quote.inverter_type_name,
-      inverterSizeLabel: quote.inverter_size_label,
-    });
+    const storedBom = parseFlorianBom(quote.bom_items) ?? cloneFlorianSampleBom();
+    const bomMaterialItems = florianBomPrintLines(
+      presentFlorianBom(storedBom, {
+        panelCount: quote.panel_count,
+        wattPeakLabel: quote.module_capacity_label,
+        inverterSize: quote.inverter_size_label,
+      })
+    );
 
     return (
       <>

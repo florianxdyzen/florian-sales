@@ -11,6 +11,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { persistQuotationRow } from "@/lib/quotations/quotation-persist";
 import { normalizeSolarTemplate } from "@/lib/quotations/quotation-template";
 import { pickTemplateSnapshot } from "@/lib/quotations/template-snapshot";
+import { ATTACHMENTS_BUCKET, getStoragePublicUrl } from "@/lib/storage-url";
 
 const r2 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
 
@@ -190,6 +191,7 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
       rate_per_kw_snapshot: data.ratePerKwSnapshot ?? null,
       net_payable_amount: data.netPayableAmount ?? null,
       template_snapshot: templateSnapshot,
+      ...(data.bomItems ? { bom_items: data.bomItems } : {}),
       updated_by: userId,
       updated_at: now,
     };
@@ -259,6 +261,19 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
       }))
     );
     if (insertError) throw dbError(insertError, "Failed to save quotation items");
+
+    if (data.bomQuoteOnly === false && data.bomItems) {
+      const savedLast = await supabase
+        .from("quotation_company_settings")
+        .update({ last_bom_items: data.bomItems, updated_at: now })
+        .eq("company_id", companyId);
+      if (
+        savedLast.error &&
+        !/last_bom_items/i.test(`${savedLast.error.message ?? ""} ${savedLast.error.details ?? ""}`)
+      ) {
+        console.error("[upsertQuotation] last-used BOM", savedLast.error);
+      }
+    }
 
     // First quote from a completed survey moves the lead to "quoted".
     if (lead?.sales_stage === "survey_completed") {
@@ -362,6 +377,7 @@ export async function duplicateQuotation(id: string): Promise<string> {
       tier_type: orig.tier_type ?? "premium",
       rate_per_kw_snapshot: orig.rate_per_kw_snapshot ?? null,
       net_payable_amount: orig.net_payable_amount ?? null,
+      ...(Array.isArray(orig.bom_items) ? { bom_items: orig.bom_items } : {}),
       created_by: userId,
       updated_by: userId,
     })
@@ -402,6 +418,29 @@ export async function deleteQuotation(id: string) {
   const { error } = await supabase.from("quotations").delete().eq("id", id).eq("company_id", companyId);
   if (error) throw dbError(error, "Failed to delete quotation");
   revalidatePath("/quotations");
+}
+
+/** Upload a bill-of-materials photo. Returns a public URL stored on that row. */
+export async function uploadQuotationBomImage(formData: FormData) {
+  const { supabase, companyId, canManageQuotations, canEditQuotations } = await getQuotationContext();
+  if (!canManageQuotations && !canEditQuotations) {
+    throw new Error("You do not have permission to upload quotation images.");
+  }
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("No file provided");
+  if (!file.type.startsWith("image/")) throw new Error("Only image files are allowed");
+  if (file.size > 8 * 1024 * 1024) throw new Error("Image must be under 8 MB");
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  if (!["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+    throw new Error("Use a JPG, PNG, WebP, or GIF image");
+  }
+  const storagePath = `${companyId}/quotation-bom/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from(ATTACHMENTS_BUCKET).upload(storagePath, await file.arrayBuffer(), {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) throw new Error(error.message);
+  return { url: getStoragePublicUrl(storagePath) };
 }
 
 async function loadLead(

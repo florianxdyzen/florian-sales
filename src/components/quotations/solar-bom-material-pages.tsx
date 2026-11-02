@@ -80,12 +80,15 @@ function MaterialTable({
               </td>
               <td>
                 <div className="sp-bom-mat-name">{item.item_name_snapshot}</div>
+                {item.model_snapshot ? (
+                  <div className="sp-bom-mat-meta">{item.model_snapshot}</div>
+                ) : null}
                 {item.brand_snapshot ? (
                   <div className="sp-bom-mat-meta">Make: {item.brand_snapshot}</div>
                 ) : null}
               </td>
               <td className="sp-bom-mat-qty">
-                {item.quantity} {item.unit}
+                {item.qty_label?.trim() || `${item.quantity} ${item.unit}`}
               </td>
             </tr>
           );
