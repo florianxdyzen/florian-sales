@@ -5,22 +5,20 @@ import type { ProposalLineItem } from "@/lib/quotations/solar-proposal-calculati
 import { resolvePreviousWorkPhotos } from "@/lib/quotations/quotation-template";
 import type { SolarProposalTemplate } from "@/lib/quotations/quotation-template";
 
-/** Max rows on a continuation BOM page (no footer note). */
-const MAX_ITEMS_PER_PAGE = 14;
-/** Max rows on the final BOM page when the footer note is shown. */
-const MAX_ITEMS_LAST_PAGE = 15;
+/** Rows that fit on one A4 sheet with 72px photos and the footer note. */
+const MAX_ITEMS_PER_PAGE = 8;
 
 /** Pack pages to capacity — never split evenly (e.g. 19 → 18 + 1, not 10 + 9). */
-function chunkItems<T>(items: T[], maxPerPage: number, maxLastPage = maxPerPage): T[][] {
+function chunkItems<T>(items: T[], maxPerPage: number): T[][] {
   if (items.length === 0) return [];
-  if (items.length <= maxLastPage) return [items];
+  if (items.length <= maxPerPage) return [items];
 
   const chunks: T[][] = [];
   let index = 0;
 
   while (index < items.length) {
     const remaining = items.length - index;
-    if (remaining <= maxLastPage) {
+    if (remaining <= maxPerPage) {
       chunks.push(items.slice(index));
       break;
     }
@@ -74,7 +72,7 @@ function MaterialTable({
                 {img ? (
                   <span className="sp-bom-mat-img-frame">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="sp-bom-mat-img" src={img} alt="" width={44} height={44} />
+                    <img className="sp-bom-mat-img" src={img} alt="" width={72} height={72} />
                   </span>
                 ) : null}
               </td>
@@ -121,7 +119,7 @@ function PageHead({ kicker, title }: { kicker: string; title: string }) {
 export const SUMMARY_PAGE_ITEM_CAP = 10;
 
 export function chunkBomMaterialPages(items: ProposalLineItem[]) {
-  return chunkItems(items, MAX_ITEMS_PER_PAGE, MAX_ITEMS_LAST_PAGE);
+  return chunkItems(items, MAX_ITEMS_PER_PAGE);
 }
 
 export function BomMaterialTable({
@@ -186,19 +184,15 @@ export function SolarBomMaterialPages({
   tier,
   title = "Bill of materials",
   moduleBrand,
-  previousWorkTitle,
-  previousWorkPhotos,
 }: {
   items: ProposalLineItem[];
   tier: BomTier;
   title?: string;
   moduleBrand?: string | null;
-  previousWorkTitle?: string;
-  previousWorkPhotos?: SolarProposalTemplate["previousWorkPhotos"];
 }) {
   if (items.length === 0) return null;
 
-  const pages = chunkItems(items, MAX_ITEMS_PER_PAGE, MAX_ITEMS_LAST_PAGE);
+  const pages = chunkItems(items, MAX_ITEMS_PER_PAGE);
   const tierLabel = tier === "premium" ? "Premium" : "Regular";
   const pageTitle =
     title ?? (tier === "regular" ? "List of materials" : "Bill of materials");
@@ -225,21 +219,29 @@ export function SolarBomMaterialPages({
               tier={tier}
               moduleBrand={moduleBrand}
             />
-            {pageIndex === pages.length - 1 ? (
-              <>
-                <BomMaterialNote />
-                {previousWorkPhotos ? (
-                  <PreviousWorkSection
-                    heading={previousWorkTitle || "Previous Work"}
-                    photos={previousWorkPhotos}
-                  />
-                ) : null}
-              </>
-            ) : null}
+            {pageIndex === pages.length - 1 ? <BomMaterialNote /> : null}
           </div>
         </section>
         );
       })}
     </>
+  );
+}
+
+export function SolarPreviousWorkPage({
+  title,
+  photos,
+}: {
+  title: string;
+  photos: SolarProposalTemplate["previousWorkPhotos"];
+}) {
+  if (resolvePreviousWorkPhotos(photos).length === 0) return null;
+  return (
+    <section className="sp-page">
+      <div className="sp-body">
+        <PageHead kicker="Installation" title={title} />
+        <PreviousWorkSection heading={title} photos={photos} />
+      </div>
+    </section>
   );
 }

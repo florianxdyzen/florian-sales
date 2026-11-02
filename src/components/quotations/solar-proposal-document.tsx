@@ -12,8 +12,8 @@ import {
   type ProposalLineItem,
 } from "@/lib/quotations/solar-proposal-calculations";
 import {
-  PreviousWorkSection,
   SolarBomMaterialPages,
+  SolarPreviousWorkPage,
 } from "@/components/quotations/solar-bom-material-pages";
 import { overlayQuoteEquipmentOnBom, type BomTier } from "@/lib/quotations/tier-bom";
 import { parseProjectType, projectTypeLabel } from "@/lib/quotations/project-type";
@@ -428,6 +428,17 @@ export function SolarProposalDocument({
                 <div className="sp-bom-field"><label>Project</label><strong>{projectLabel}</strong></div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="sp-page">
+        <div className="sp-body">
+          <PageChrome
+            kicker={[projectLabel, tierLabel, "continued"].filter(Boolean).join(" · ") || template.bomPageKicker}
+            title={template.bomPageTitle}
+          />
+          <div className="sp-bom-grid-wrap">
             <div className="sp-bom-section">
               <h3>Balance of system</h3>
               <div className="sp-bom-field" style={{ marginBottom: 6 }}><label>ACDB</label><strong>{template.acdb}</strong></div>
@@ -445,12 +456,6 @@ export function SolarProposalDocument({
                 ))}
               </div>
             </div>
-            {pagedBomItems.length === 0 ? (
-              <PreviousWorkSection
-                heading={template.previousWorkTitle || "Previous Work"}
-                photos={template.previousWorkPhotos}
-              />
-            ) : null}
           </div>
         </div>
       </section>
@@ -460,8 +465,10 @@ export function SolarProposalDocument({
         tier={bomTier}
         title="Bill of materials"
         moduleBrand={panelBrand}
-        previousWorkTitle={template.previousWorkTitle}
-        previousWorkPhotos={template.previousWorkPhotos}
+      />
+      <SolarPreviousWorkPage
+        title={template.previousWorkTitle || "Previous Work"}
+        photos={template.previousWorkPhotos}
       />
 
       <section className="sp-page sp-page-merged">

@@ -553,8 +553,8 @@ export const SOLAR_PROPOSAL_CSS = `
   border-bottom: 2px solid rgba(30, 57, 112, 0.12);
 }
 .sp-bom-material-table th:nth-child(1) { width: 28px; }
-.sp-bom-material-table th:nth-child(2) { width: 52px; }
-.sp-bom-material-table th:last-child { text-align: right; width: 72px; }
+.sp-bom-material-table th:nth-child(2) { width: 88px; }
+.sp-bom-material-table th:last-child { text-align: right; width: 88px; }
 .sp-bom-material-table td {
   padding: 6px 8px;
   border-bottom: 1px solid rgba(30, 57, 112, 0.08);
@@ -568,21 +568,21 @@ export const SOLAR_PROPOSAL_CSS = `
   font-size: 12px;
 }
 .sp-bom-mat-img-cell {
-  width: 52px;
-  max-width: 52px;
+  width: 88px;
+  max-width: 88px;
   overflow: hidden;
 }
 .sp-bom-mat-img-frame {
   display: block;
-  width: 44px;
-  height: 44px;
+  width: 72px;
+  height: 72px;
   overflow: hidden;
 }
 .sp-bom-mat-img {
-  width: 44px;
-  height: 44px;
-  max-width: 44px;
-  max-height: 44px;
+  width: 72px;
+  height: 72px;
+  max-width: 72px;
+  max-height: 72px;
   object-fit: contain;
   object-position: center;
   display: block;
