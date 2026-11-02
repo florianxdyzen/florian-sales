@@ -237,7 +237,7 @@ export function SolarPreviousWorkPage({
 }) {
   if (resolvePreviousWorkPhotos(photos).length === 0) return null;
   return (
-    <section className="sp-page">
+    <section className="sp-page sp-page-gallery">
       <div className="sp-body">
         <PageHead kicker="Installation" title={title} />
         <PreviousWorkSection heading={title} photos={photos} />

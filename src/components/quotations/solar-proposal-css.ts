@@ -206,6 +206,17 @@ export const SOLAR_PROPOSAL_CSS = `
 
 /* ── SYSTEM / BOM ── */
 .sp-bom-grid-wrap { display: flex; flex-direction: column; gap: 12px; }
+.sp-pack-fill { margin-top: 16px; flex: 1; min-height: 160px; display: flex; flex-direction: column; gap: 8px; }
+.sp-pack-kicker { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sp-accent); font-family: Outfit, "DM Sans", sans-serif; }
+.sp-pack-photos { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.sp-pack-photo { margin: 0; position: relative; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; min-height: 0; background: #0f172a; }
+.sp-pack-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sp-pack-photo figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 8px 8px; color: #fff; font-size: 11px; font-weight: 700; background: linear-gradient(transparent, rgba(15, 23, 42, .78)); }
+.sp-pack-hero { margin: 16px 0 0; flex: 1; min-height: 220px; position: relative; border-radius: 14px; overflow: hidden; border: 1px solid #e2e8f0; background: #0f172a; }
+.sp-pack-hero img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+.sp-pack-hero figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 28px 16px 14px; color: #fff; font-size: 13px; font-weight: 700; line-height: 1.4; background: linear-gradient(transparent, rgba(15, 23, 42, .78)); }
+.sp-page-gallery .sp-portfolio-section { flex: 1 1 auto; margin-top: 0; }
+.sp-page-gallery .sp-portfolio-heading { display: none; }
 .sp-bom-material-inline {
   margin-top: 14px;
   display: flex;

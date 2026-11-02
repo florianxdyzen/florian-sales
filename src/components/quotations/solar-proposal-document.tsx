@@ -429,6 +429,23 @@ export function SolarProposalDocument({
               </div>
             </div>
           </div>
+          <div className="sp-pack-fill">
+            <p className="sp-pack-kicker">Included with this plant</p>
+            <div className="sp-pack-photos">
+              {[
+                ["/brand/bom-florian/01-modules.jpg", "Modules"],
+                ["/brand/bom-florian/02-inverter.jpg", "Inverter"],
+                ["/brand/bom-florian/03-structure.jpg", "Structure"],
+                ["/brand/bom-florian/04-cable.jpg", "Cables"],
+              ].map(([src, label]) => (
+                <figure key={label} className="sp-pack-photo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" />
+                  <figcaption>{label}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -457,6 +474,13 @@ export function SolarProposalDocument({
               </div>
             </div>
           </div>
+          <figure className="sp-pack-hero">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/bom-florian/01-modules.jpg" alt="" />
+            <figcaption>
+              Indicative rooftop layout. Panel count, structure, and cable runs follow the site survey.
+            </figcaption>
+          </figure>
         </div>
       </section>
 
