@@ -33,13 +33,19 @@ import {
   inferSystemSelection,
 } from "@/lib/quotations/catalog-items";
 import type { RateCardPanel } from "@/lib/quotations/rate-card-panels";
-import { panelCapacityLabel } from "@/lib/quotations/rate-card-panels";
 import {
   parseInverterSizeKw,
   type RateCardInverter,
 } from "@/lib/quotations/rate-card-inverters";
-import { normalizeInverterBrand } from "@/lib/quotations/inverter-brand";
-import { calcPerKwQuotePricing, getPerKwRate, resolvePanelWattage } from "@/lib/quotations/per-kw-pricing";
+import { calcSystemKw } from "@/lib/quotations/per-kw-pricing";
+import {
+  isFlorianInverterMake,
+  isFlorianPanelCompany,
+  normalizeFlorianInverterMake,
+  normalizeFlorianPanelCompany,
+  type FlorianInverterMake,
+  type FlorianPanelCompany,
+} from "@/lib/quotations/florian-brands";
 import {
   cloneFlorianSampleBom,
   parseFlorianBom,
@@ -93,67 +99,41 @@ function initialDiscountFromDefaults(defaults?: Partial<QuotationPayload>) {
   };
 }
 
-function findPanelFromDefaults(
-  panels: RateCardPanel[],
-  defaults?: Partial<QuotationPayload>
-) {
+function findPanelFromDefaults(defaults?: Partial<QuotationPayload>) {
   const panelName = defaults?.moduleTypeName?.trim() ?? "";
   const legacyBrand = defaults?.moduleCompanyName?.trim() ?? "";
-  const legacyCombined =
-    panelName && legacyBrand && panelName !== legacyBrand
-      ? `${panelName} — ${legacyBrand}`
-      : panelName || legacyBrand;
-
-  const matched =
-    panels.find((p) => p.panel_name === legacyCombined) ??
-    panels.find((p) => p.panel_name === panelName) ??
-    panels.find((p) => legacyCombined && p.panel_name.includes(panelName));
-
-  const panel = matched ?? null;
+  const company =
+    normalizeFlorianPanelCompany(panelName) ||
+    normalizeFlorianPanelCompany(legacyBrand) ||
+    "";
+  const legacyLabel =
+    company ? "" : panelName || legacyBrand || "";
 
   return {
-    panelId: panel?.id ?? "",
+    panelCompany: company as FlorianPanelCompany | "",
+    legacyPanelLabel: legacyLabel,
     systemCost: Number(defaults?.systemCost ?? 0),
-    minSalePrice: Number(defaults?.minSalePriceSnapshot ?? 0),
     systemSizeKw: Number(defaults?.systemSizeKw ?? 0),
     panelCount: Number(defaults?.panelCount ?? 0),
-    panelName: panel?.panel_name ?? panelName,
-    moduleCapacityLabel:
-      defaults?.moduleCapacityLabel ?? (panel ? panelCapacityLabel(panel) : ""),
+    moduleCapacityLabel: defaults?.moduleCapacityLabel ?? "",
   };
 }
 
-function findInverterFromDefaults(
-  inverters: RateCardInverter[],
-  defaults?: Partial<QuotationPayload>
-): {
-  inverterId: string;
-  inverterTypeName: string;
+function findInverterFromDefaults(defaults?: Partial<QuotationPayload>): {
+  inverterMake: FlorianInverterMake | "";
+  legacyInverterLabel: string;
   inverterSizeLabel: string;
 } {
   const invLine = (defaults?.items ?? []).find((row) => /inverter/i.test(row.itemName));
   const rawName =
-    defaults?.inverterTypeName?.trim() ||
-    invLine?.brand?.trim() ||
-    normalizeInverterBrand(defaults?.inverterTypeName) ||
-    normalizeInverterBrand(invLine?.brand) ||
-    "";
+    defaults?.inverterTypeName?.trim() || invLine?.brand?.trim() || "";
+  const make = normalizeFlorianInverterMake(rawName);
   const sizeLabel =
     defaults?.inverterSizeLabel?.trim() || invLine?.model?.trim() || "";
-  const nameLower = rawName.toLowerCase();
-  const sizeLower = sizeLabel.toLowerCase();
-  const matched =
-    inverters.find(
-      (inv) =>
-        inv.inverter_name.trim().toLowerCase() === nameLower &&
-        (!sizeLower || inv.inverter_size.trim().toLowerCase() === sizeLower)
-    ) ??
-    inverters.find((inv) => inv.inverter_name.trim().toLowerCase() === nameLower) ??
-    null;
   return {
-    inverterId: matched?.id ?? "",
-    inverterTypeName: matched?.inverter_name ?? rawName,
-    inverterSizeLabel: matched ? matched.inverter_size : sizeLabel,
+    inverterMake: make,
+    legacyInverterLabel: make ? "" : rawName,
+    inverterSizeLabel: sizeLabel,
   };
 }
 
@@ -166,8 +146,8 @@ function wattsFromCapacity(label: string | null | undefined): number {
 
 export function QuotationBuilderForm({
   catalog,
-  panels,
-  inverters = [],
+  panels: _panels = [],
+  inverters: _inverters = [],
   leads = [],
   canAddLead = false,
   defaultValues,
@@ -179,7 +159,9 @@ export function QuotationBuilderForm({
   initialBomItems = null,
 }: {
   catalog: CatalogItem[];
-  panels: RateCardPanel[];
+  /** @deprecated Solar System Details uses fixed Florian panel chips. */
+  panels?: RateCardPanel[];
+  /** @deprecated Solar System Details uses fixed Florian inverter chips. */
   inverters?: RateCardInverter[];
   leads?: QuoteLeadOption[];
   canAddLead?: boolean;
@@ -192,6 +174,8 @@ export function QuotationBuilderForm({
   /** Last-used list for a new solar quote. Ignored when editing a saved quote. */
   initialBomItems?: FlorianBomItem[] | null;
 }) {
+  void _panels;
+  void _inverters;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -199,14 +183,8 @@ export function QuotationBuilderForm({
   const today = new Date().toISOString().slice(0, 10);
   const valid7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
-  const initialRate = useMemo(
-    () => findPanelFromDefaults(panels, defaultValues),
-    [panels, defaultValues]
-  );
-  const initialInverter = useMemo(
-    () => findInverterFromDefaults(inverters, defaultValues),
-    [inverters, defaultValues]
-  );
+  const initialRate = useMemo(() => findPanelFromDefaults(defaultValues), [defaultValues]);
+  const initialInverter = useMemo(() => findInverterFromDefaults(defaultValues), [defaultValues]);
   const initialSystem = useMemo(
     () => inferSystemSelection(catalog, defaultValues?.items ?? []),
     [catalog, defaultValues?.items]
@@ -215,18 +193,25 @@ export function QuotationBuilderForm({
   const [openSection, setOpenSection] = useState<OpenSection>(() =>
     defaultValues?.customerName && defaultValues?.customerPhone ? "system" : "customer"
   );
-  const [panelId, setPanelId] = useState(initialRate.panelId);
+  const [panelCompany, setPanelCompany] = useState<FlorianPanelCompany | "">(
+    initialRate.panelCompany
+  );
+  const [legacyPanelLabel] = useState(initialRate.legacyPanelLabel);
   const [systemCost, setSystemCost] = useState(initialRate.systemCost);
-  const [minSalePrice, setMinSalePrice] = useState(initialRate.minSalePrice);
+  const [minSalePrice, setMinSalePrice] = useState(0);
   const initialDiscount = useMemo(() => initialDiscountFromDefaults(defaultValues), [defaultValues]);
   const [discountPercent, setDiscountPercent] = useState(initialDiscount.percent);
   const [discountAmount, setDiscountAmount] = useState(initialDiscount.amount);
   const [systemSizeKw, setSystemSizeKw] = useState(initialRate.systemSizeKw);
   const [panelCount, setPanelCount] = useState(initialRate.panelCount);
-  const [moduleTypeName, setModuleTypeName] = useState(initialRate.panelName);
+  const [moduleTypeName, setModuleTypeName] = useState(
+    initialRate.panelCompany || initialRate.legacyPanelLabel
+  );
   const [moduleCapacityLabel, setModuleCapacityLabel] = useState(initialRate.moduleCapacityLabel);
-  const [inverterId, setInverterId] = useState(initialInverter.inverterId);
-  const [inverterTypeName, setInverterTypeName] = useState(initialInverter.inverterTypeName);
+  const [inverterTypeName, setInverterTypeName] = useState<FlorianInverterMake | "">(
+    initialInverter.inverterMake
+  );
+  const [legacyInverterLabel] = useState(initialInverter.legacyInverterLabel);
   const [inverterSizeLabelState, setInverterSizeLabelState] = useState(
     initialInverter.inverterSizeLabel
   );
@@ -270,7 +255,6 @@ export function QuotationBuilderForm({
   const [panelMountType, setPanelMountType] = useState<PanelMountType | null>(
     parsePanelMountType(defaultValues?.panelMountType)
   );
-  const [ratePerKw, setRatePerKw] = useState(Number(defaultValues?.ratePerKwSnapshot ?? 0));
   const [bomItems, setBomItems] = useState<FlorianBomItem[]>(() => {
     const saved = parseFlorianBom(defaultValues?.bomItems);
     if (saved) return saved;
@@ -279,8 +263,13 @@ export function QuotationBuilderForm({
   });
   const [bomQuoteOnly, setBomQuoteOnly] = useState(true);
   const [wattPeak, setWattPeak] = useState(() => wattsFromCapacity(initialRate.moduleCapacityLabel));
-  const wattTouched = useRef(wattsFromCapacity(initialRate.moduleCapacityLabel) > 0);
-  const rateTouched = useRef(Number(defaultValues?.ratePerKwSnapshot ?? 0) > 0);
+  const [ratePerKw, setRatePerKw] = useState(() => {
+    const saved = Number(defaultValues?.ratePerKwSnapshot ?? 0);
+    if (saved > 0) return saved;
+    const cost = Number(defaultValues?.systemCost ?? 0);
+    const kw = Number(defaultValues?.systemSizeKw ?? 0);
+    return cost > 0 && kw > 0 ? round2(cost / kw) : 0;
+  });
 
   const initialMeterType = quoteMeterTypeFromFields(
     defaultValues?.projectType ?? "residential",
@@ -343,10 +332,6 @@ export function QuotationBuilderForm({
     setValue("siteCharges.floors.ratePerFloor", FLOOR_RATE_DEFAULTS[projectType as ProjectType]);
   }, [projectType, setValue]);
 
-  const selectedPanel = useMemo(
-    () => panels.find((p) => p.id === panelId) ?? null,
-    [panels, panelId]
-  );
   const inverterKw = parseInverterSizeKw(inverterSizeLabelState);
   const residentialCalc = useMemo(
     () => calcQuotationSubsidy(systemSizeKw, "residential"),
@@ -426,20 +411,20 @@ export function QuotationBuilderForm({
   }
 
   useEffect(() => {
-    if (!selectedPanel || wattTouched.current) return;
-    setWattPeak(resolvePanelWattage(selectedPanel, panelCapacityLabel(selectedPanel)));
-  }, [selectedPanel]);
-
-  useEffect(() => {
-    if (!selectedPanel || rateTouched.current) return;
-    setRatePerKw(getPerKwRate(selectedPanel, parseProjectType(projectType), tier) ?? 0);
-  }, [selectedPanel, projectType, tier]);
-
-  useEffect(() => {
-    if (!selectedPanel || panelCount <= 0) return;
-    applyPerKwPricing(selectedPanel, panelCount, tier, parseProjectType(projectType));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPanel?.id, panelCount, tier, projectType, wattPeak, ratePerKw]);
+    const nextKw = calcSystemKw(wattPeak, panelCount);
+    setSystemSizeKw(nextKw);
+    if (wattPeak > 0) {
+      setModuleCapacityLabel(`${Math.round(wattPeak)}W`);
+    }
+    if (systemCost > 0 && nextKw > 0) {
+      setRatePerKw(round2(systemCost / nextKw));
+    } else if (!(systemCost > 0)) {
+      setRatePerKw(0);
+    }
+    if (discountPercent > 0) {
+      setDiscountAmount(systemCost > 0 ? round2((systemCost * discountPercent) / 100) : 0);
+    }
+  }, [wattPeak, panelCount, systemCost, discountPercent]);
 
   useEffect(() => {
     setValue("items", [...systemLineItems, ...additionalItems], { shouldValidate: true });
@@ -514,11 +499,12 @@ export function QuotationBuilderForm({
 
   const customerComplete = Boolean(customerName?.trim() && customerPhone?.trim().length >= 10);
   const systemComplete = Boolean(
-    panelId &&
+    isFlorianPanelCompany(panelCompany) &&
+      wattPeak > 0 &&
       panelCount > 0 &&
       systemSizeKw > 0 &&
       systemCost > 0 &&
-      inverterTypeName.trim() &&
+      isFlorianInverterMake(inverterTypeName) &&
       inverterSizeLabelState.trim() &&
       meterPhase &&
       (!isCommercial || panelMountType) &&
@@ -531,10 +517,12 @@ export function QuotationBuilderForm({
     if (!customerPhone?.trim() || customerPhone.trim().length < 10) {
       missing.push("valid phone (10+ digits)");
     }
-    if (!panelId) missing.push("panel");
+    if (!isFlorianPanelCompany(panelCompany)) missing.push("panel company");
+    if (!(wattPeak > 0)) missing.push("watt peak");
     if (!(panelCount > 0)) missing.push("panel count");
-    if (!(systemSizeKw > 0) || !(systemCost > 0)) missing.push("system pricing");
-    if (!inverterTypeName.trim()) missing.push("inverter from catalog");
+    if (!(systemCost > 0)) missing.push("Final Amount");
+    if (!(systemSizeKw > 0)) missing.push("system capacity");
+    if (!isFlorianInverterMake(inverterTypeName)) missing.push("inverter make");
     if (!inverterSizeLabelState.trim()) missing.push("inverter size");
     if (!meterPhase) missing.push("meter phase");
     if (isCommercial && !panelMountType) missing.push("panel mount option");
@@ -543,7 +531,8 @@ export function QuotationBuilderForm({
   }, [
     customerName,
     customerPhone,
-    panelId,
+    panelCompany,
+    wattPeak,
     panelCount,
     systemSizeKw,
     systemCost,
@@ -555,18 +544,6 @@ export function QuotationBuilderForm({
     belowMin,
     minSalePrice,
   ]);
-
-  function onInverterChange(nextId: string) {
-    setInverterId(nextId);
-    const selected = inverters.find((inv) => inv.id === nextId) ?? null;
-    if (!selected) {
-      setInverterTypeName("");
-      setInverterSizeLabelState("");
-      return;
-    }
-    setInverterTypeName(selected.inverter_name);
-    setInverterSizeLabelState(selected.inverter_size);
-  }
 
   function toggleSection(section: Exclude<OpenSection, null>) {
     setOpenSection((prev) => (prev === section ? null : section));
@@ -628,76 +605,27 @@ export function QuotationBuilderForm({
     setDiscountPercent(pct);
   }
 
-  function applyPerKwPricing(
-    panel = selectedPanel,
-    count = panelCount,
-    rateTier = tier,
-    projType = parseProjectType(projectType)
-  ) {
-    if (!panel || count <= 0) {
-      if (count <= 0) {
-        setSystemSizeKw(0);
-        setSystemCost(0);
-        setMinSalePrice(0);
-      }
-      return;
-    }
-    const capacityLabel = panelCapacityLabel(panel);
-    const pricing = calcPerKwQuotePricing({
-      company: panel,
-      capacityLabel: capacityLabel || moduleCapacityLabel,
-      panelCount: count,
-      projectType: projType,
-      tier: rateTier,
-      panelWattage: wattTouched.current ? wattPeak : null,
-      ratePerKw: rateTouched.current ? ratePerKw : null,
-    });
-    setModuleCapacityLabel(
-      pricing.panelWattage > 0 ? `${Math.round(pricing.panelWattage)}W` : capacityLabel
-    );
-    setSystemSizeKw(pricing.systemKw);
-    if (!rateTouched.current) setRatePerKw(pricing.ratePerKw);
-    setSystemCost(pricing.systemCost);
-    setMinSalePrice(pricing.minSalePrice);
-    setDiscountAmount(
-      discountPercent > 0 ? round2((pricing.systemCost * discountPercent) / 100) : 0
-    );
-  }
-
-  function onPanelChange(id: string) {
-    setPanelId(id);
-    const panel = panels.find((p) => p.id === id) ?? null;
-    setModuleTypeName(panel?.panel_name ?? "");
-    if (!wattTouched.current) {
-      const nextWatt = panel ? resolvePanelWattage(panel, panelCapacityLabel(panel)) : 0;
-      setWattPeak(nextWatt);
-      setModuleCapacityLabel(nextWatt > 0 ? `${nextWatt}W` : panel ? panelCapacityLabel(panel) : "");
-    }
-    setSystemCost(0);
-    setMinSalePrice(0);
-    setDiscountPercent(0);
-    setDiscountAmount(0);
-    setSystemSizeKw(0);
-    setPanelCount(0);
-    if (!rateTouched.current) setRatePerKw(0);
+  function onPanelCompanyChange(company: FlorianPanelCompany) {
+    setPanelCompany(company);
+    setModuleTypeName(company);
   }
 
   function onWattPeakChange(watts: number) {
-    wattTouched.current = true;
     setWattPeak(watts);
   }
 
-  function onRatePerKwChange(rate: number) {
-    rateTouched.current = true;
-    setRatePerKw(rate);
+  function onFinalAmountChange(amount: number) {
+    const next = Math.max(0, amount);
+    setSystemCost(next);
+    setMinSalePrice(0);
   }
 
   function onPanelCountChange(count: number) {
-    const next = Math.max(0, Math.floor(count));
-    setPanelCount(next);
-    if (selectedPanel) {
-      applyPerKwPricing(selectedPanel, next);
-    }
+    setPanelCount(Math.max(0, Math.floor(count)));
+  }
+
+  function onInverterMakeChange(make: FlorianInverterMake) {
+    setInverterTypeName(make);
   }
 
   function goToSystem() {
@@ -955,8 +883,6 @@ export function QuotationBuilderForm({
             complete={systemComplete}
           >
             <SystemDetailsPanel
-              panels={panels}
-              inverters={inverters}
               projectType={parseProjectType(projectType)}
               quoteTier={tier}
               subsidyScheme={subsidyScheme}
@@ -970,25 +896,28 @@ export function QuotationBuilderForm({
                       ? "Subsidy (auto)"
                       : "Subsidy (off)"
               }
-              panelId={panelId}
+              panelCompany={panelCompany}
               systemCost={systemCost}
               systemSizeKw={systemSizeKw}
               panelCount={panelCount}
               ratePerKw={ratePerKw}
               wattPeak={wattPeak}
-              canEditRate={canEditQuotationPricing}
               onWattPeakChange={onWattPeakChange}
-              onRatePerKwChange={onRatePerKwChange}
-              inverterId={inverterId}
+              onFinalAmountChange={onFinalAmountChange}
               inverterBrand={inverterTypeName}
               inverterSize={inverterSizeLabelState}
               panelMountType={panelMountType}
-              onPanelChange={onPanelChange}
+              onPanelCompanyChange={onPanelCompanyChange}
               onPanelCountChange={onPanelCountChange}
               onPanelMountTypeChange={setPanelMountType}
-              onInverterChange={onInverterChange}
+              onInverterMakeChange={onInverterMakeChange}
               onInverterSizeChange={setInverterSizeLabelState}
               showPricing={!pricingLocked}
+              legacyPanelLabel={legacyPanelLabel}
+              legacyInverterLabel={
+                legacyInverterLabel ||
+                (!isFlorianInverterMake(inverterTypeName) ? inverterTypeName : "")
+              }
             />
 
             <div className="mt-5 space-y-2">
