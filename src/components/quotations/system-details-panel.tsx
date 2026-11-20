@@ -2,12 +2,14 @@
 
 import type { RateCardPanel } from "@/lib/quotations/rate-card-panels";
 import { panelCapacityLabel } from "@/lib/quotations/rate-card-panels";
-import { parseInverterSizeKw } from "@/lib/quotations/rate-card-inverters";
-import type { InverterBrand } from "@/lib/quotations/inverter-brand";
+import {
+  parseInverterSizeKw,
+  type RateCardInverter,
+} from "@/lib/quotations/rate-card-inverters";
 import type { QuoteTier } from "@/components/quotations/quote-tier-toggle";
 import { getPerKwRate } from "@/lib/quotations/per-kw-pricing";
 import { PanelSearchPicker } from "@/components/quotations/panel-search-picker";
-import { InverterBrandPicker } from "@/components/quotations/inverter-brand-picker";
+import { InverterSearchPicker } from "@/components/quotations/inverter-search-picker";
 import { Input } from "@/components/ui/input";
 import { inr } from "@/lib/quotations/format";
 import { SUBSIDY_SCHEME_LABELS, type SubsidyScheme } from "@/lib/quotations/subsidy";
@@ -25,6 +27,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 export function SystemDetailsPanel({
   panels,
+  inverters = [],
   projectType,
   quoteTier = "premium",
   subsidyScheme = "residential",
@@ -39,17 +42,19 @@ export function SystemDetailsPanel({
   canEditRate = false,
   onWattPeakChange,
   onRatePerKwChange,
+  inverterId,
   inverterBrand,
   inverterSize,
   panelMountType = null,
   onPanelChange,
   onPanelCountChange,
-  onInverterBrandChange,
+  onInverterChange,
   onInverterSizeChange,
   onPanelMountTypeChange,
   showPricing = true,
 }: {
   panels: RateCardPanel[];
+  inverters?: RateCardInverter[];
   projectType: ProjectType;
   quoteTier?: QuoteTier;
   subsidyScheme?: SubsidyScheme;
@@ -64,12 +69,13 @@ export function SystemDetailsPanel({
   canEditRate?: boolean;
   onWattPeakChange?: (watts: number) => void;
   onRatePerKwChange?: (rate: number) => void;
-  inverterBrand: InverterBrand | "";
+  inverterId: string;
+  inverterBrand: string;
   inverterSize: string;
   panelMountType?: PanelMountType | null;
   onPanelChange: (id: string) => void;
   onPanelCountChange?: (count: number) => void;
-  onInverterBrandChange: (brand: InverterBrand) => void;
+  onInverterChange: (inverterId: string) => void;
   onInverterSizeChange: (size: string) => void;
   onPanelMountTypeChange?: (mount: PanelMountType) => void;
   showPricing?: boolean;
@@ -239,14 +245,44 @@ export function SystemDetailsPanel({
         </div>
       )}
 
-      <InverterBrandPicker
-        brand={inverterBrand}
-        size={inverterSize}
-        onBrandChange={onInverterBrandChange}
-        onSizeChange={onInverterSizeChange}
-      />
+      <div>
+        <FieldLabel>Inverter</FieldLabel>
+        <InverterSearchPicker
+          inverters={inverters}
+          value={inverterId}
+          onChange={onInverterChange}
+          placeholder="Search catalog inverters…"
+        />
+        {!inverterId && inverterBrand.trim() ? (
+          <p className="mt-1.5 text-xs text-amber-700">
+            Current quote uses {inverterBrand}
+            {inverterSize.trim() ? ` · ${inverterSize.trim()}` : ""}. Pick a catalog inverter to
+            update.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="max-w-md">
+        <FieldLabel>Inverter size (shown on quote)</FieldLabel>
+        <Input
+          type="text"
+          value={inverterSize}
+          onChange={(e) => onInverterSizeChange(e.target.value)}
+          placeholder="e.g. 50KW, 5 kW three phase"
+          className="min-h-11"
+          autoComplete="off"
+        />
+        <p className="mt-1.5 text-xs text-slate-500">
+          Prefills from Catalog → Inverters. Edit if this quote needs a different size label.
+        </p>
+        {!inverterSize.trim() && (
+          <p className="mt-1.5 text-xs text-red-600">Enter or select an inverter size.</p>
+        )}
+      </div>
       {inverterBrand && inverterSize.trim() && inverterKw > 0 && (
-        <p className="text-xs text-slate-500">Parsed capacity: ≈ {inverterKw} kW</p>
+        <p className="text-xs text-slate-500">
+          {inverterBrand} · parsed capacity ≈ {inverterKw} kW
+        </p>
       )}
     </div>
   );

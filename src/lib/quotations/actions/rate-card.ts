@@ -345,6 +345,8 @@ export async function upsertRateInverter(
       return { ok: false, error: error?.message ?? "Could not save inverter" };
     }
     revalidatePath("/catalog");
+    revalidatePath("/quotations");
+    revalidatePath("/quotations/new");
     return { ok: true, ...updated };
   }
 
@@ -357,6 +359,8 @@ export async function upsertRateInverter(
     return { ok: false, error: error?.message ?? "Could not add inverter" };
   }
   revalidatePath("/catalog");
+  revalidatePath("/quotations");
+  revalidatePath("/quotations/new");
   return { ok: true, ...inserted };
 }
 
@@ -369,4 +373,6 @@ export async function deleteRateInverter(id: string) {
     .eq("company_id", companyId);
   if (error) throw error;
   revalidatePath("/catalog");
+  revalidatePath("/quotations");
+  revalidatePath("/quotations/new");
 }
