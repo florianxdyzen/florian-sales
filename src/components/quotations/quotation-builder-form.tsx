@@ -221,9 +221,9 @@ export function QuotationBuilderForm({
       (defaultValues?.items ?? []) as QuoteItemInput[],
       initialSystem.panelItemId,
       initialSystem.panelQty || 1,
-      initialInverter.inverterTypeName
+      initialInverter.inverterMake
         ? {
-            brand: initialInverter.inverterTypeName,
+            brand: initialInverter.inverterMake,
             sizeLabel: initialInverter.inverterSizeLabel,
           }
         : null

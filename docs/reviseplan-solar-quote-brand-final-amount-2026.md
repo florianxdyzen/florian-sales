@@ -2,7 +2,7 @@
 
 **App:** `Apps/Florian-Sales` only (not inventory `Apps/Florian`)  
 **Date:** 2026-11-21  
-**Status:** Implemented in app — pending sync/deploy  
+**Status:** Deployed **v19** (2026-11-21)  
 **Trigger:** Staff want fixed panel/inverter brand chips on System Details, plus a single **Final Amount** field that drives quote pricing instead of catalog rate-card / ₹/kW entry.  
 **Related:** Catalog inverter picker fix (v18); solar BOM sample plan `plan-solar-bom-from-sample-2026.md`.
 
