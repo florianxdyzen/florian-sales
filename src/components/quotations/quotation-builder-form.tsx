@@ -73,6 +73,20 @@ import {
   parsePanelMountType,
   type PanelMountType,
 } from "@/lib/quotations/commercial";
+import {
+  defaultStructureMicron,
+  micronBand,
+  parseStructureMicron,
+  type StructureMicron,
+} from "@/lib/quotations/structure-micron";
+import {
+  kwPrefKey,
+  lookupLastInverter,
+  parseLastInverterByKw,
+  parseLastSubsidyUnder3,
+  type LastInverterPref,
+  type LastSubsidyUnder3Pref,
+} from "@/lib/quotations/quote-prefs";
 
 type OpenSection = "customer" | "system" | "materials" | "other" | "quote" | null;
 
@@ -157,6 +171,8 @@ export function QuotationBuilderForm({
   quoteTier = "premium",
   proposalTemplate,
   initialBomItems = null,
+  lastInverterByKw: lastInverterByKwProp = null,
+  lastSubsidyUnder3Kw: lastSubsidyUnder3KwProp = null,
 }: {
   catalog: CatalogItem[];
   /** @deprecated Solar System Details uses fixed Florian panel chips. */
@@ -173,10 +189,20 @@ export function QuotationBuilderForm({
   proposalTemplate?: SolarProposalTemplate;
   /** Last-used list for a new solar quote. Ignored when editing a saved quote. */
   initialBomItems?: FlorianBomItem[] | null;
+  lastInverterByKw?: Record<string, LastInverterPref> | null;
+  lastSubsidyUnder3Kw?: LastSubsidyUnder3Pref | null;
 }) {
   void _panels;
   void _inverters;
   const router = useRouter();
+  const lastInverterByKw = useMemo(
+    () => parseLastInverterByKw(lastInverterByKwProp ?? {}),
+    [lastInverterByKwProp]
+  );
+  const lastSubsidyUnder3 = useMemo(
+    () => lastSubsidyUnder3KwProp ?? parseLastSubsidyUnder3(null),
+    [lastSubsidyUnder3KwProp]
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [tier, setTier] = useState<QuoteTier>(quoteTier);
@@ -191,7 +217,7 @@ export function QuotationBuilderForm({
   );
 
   const [openSection, setOpenSection] = useState<OpenSection>(() =>
-    defaultValues?.customerName && defaultValues?.customerPhone ? "system" : "customer"
+    defaultValues?.customerName?.trim() ? "system" : "customer"
   );
   const [panelCompany, setPanelCompany] = useState<FlorianPanelCompany | "">(
     initialRate.panelCompany
@@ -263,6 +289,24 @@ export function QuotationBuilderForm({
   });
   const [bomQuoteOnly, setBomQuoteOnly] = useState(true);
   const [wattPeak, setWattPeak] = useState(() => wattsFromCapacity(initialRate.moduleCapacityLabel));
+  const [structureMicron, setStructureMicron] = useState<StructureMicron>(() =>
+    parseStructureMicron(defaultValues?.structureMicron) ??
+      defaultStructureMicron(initialRate.systemSizeKw)
+  );
+  const lastMicronBandRef = useRef(micronBand(initialRate.systemSizeKw));
+  const skipInverterPrefOnce = useRef(Boolean(defaultValues?.id));
+  /** null on new quotes so first kW apply can pull last inverter. */
+  const lastInverterKwKeyRef = useRef<string | null>(
+    defaultValues?.id ? kwPrefKey(initialRate.systemSizeKw) : null
+  );
+  const skipSubsidyPrefOnce = useRef(Boolean(defaultValues?.id));
+  const lastSubsidyKwBandRef = useRef(
+    defaultValues?.id
+      ? initialRate.systemSizeKw > 0 && initialRate.systemSizeKw < 3
+        ? "under3"
+        : "other"
+      : "init"
+  );
   const [ratePerKw, setRatePerKw] = useState(() => {
     const saved = Number(defaultValues?.ratePerKwSnapshot ?? 0);
     if (saved > 0) return saved;
@@ -281,13 +325,28 @@ export function QuotationBuilderForm({
       initialMeterType === "residential" &&
       parseSubsidyScheme(defaultValues?.subsidyScheme) !== "none"
   );
-  const [subsidyAmount, setSubsidyAmount] = useState(() =>
-    Math.max(0, Number(defaultValues?.subsidy ?? 0))
-  );
+  const [subsidyAmount, setSubsidyAmount] = useState(() => {
+    const saved = Number(defaultValues?.subsidy ?? NaN);
+    if (Number.isFinite(saved) && saved >= 0 && defaultValues?.id) return saved;
+    if (
+      !defaultValues?.id &&
+      lastSubsidyUnder3KwProp &&
+      Number(lastSubsidyUnder3KwProp.amount) >= 0 &&
+      initialRate.systemSizeKw > 0 &&
+      initialRate.systemSizeKw < 3
+    ) {
+      return Math.max(0, Number(lastSubsidyUnder3KwProp.amount));
+    }
+    return Math.max(0, Number(defaultValues?.subsidy ?? 0));
+  });
   const skipNextResidentialAuto = useRef(
-    initialMeterType === "residential" &&
+    (initialMeterType === "residential" &&
       defaultValues?.subsidy != null &&
-      Number(defaultValues.subsidy) >= 0
+      Number(defaultValues.subsidy) >= 0) ||
+      (!defaultValues?.id &&
+        Boolean(lastSubsidyUnder3KwProp) &&
+        initialRate.systemSizeKw > 0 &&
+        initialRate.systemSizeKw < 3)
   );
   const [linkedLeadId, setLinkedLeadId] = useState<string | null>(
     defaultValues?.leadId ?? null
@@ -426,9 +485,51 @@ export function QuotationBuilderForm({
     }
   }, [wattPeak, panelCount, systemCost, discountPercent]);
 
+  // Structure micron: reset to auto default when system kW band changes.
+  useEffect(() => {
+    const band = micronBand(systemSizeKw);
+    if (band === lastMicronBandRef.current) return;
+    lastMicronBandRef.current = band;
+    setStructureMicron(defaultStructureMicron(systemSizeKw));
+  }, [systemSizeKw]);
+
+  // Last inverter used for the same system kW.
+  useEffect(() => {
+    if (skipInverterPrefOnce.current) {
+      skipInverterPrefOnce.current = false;
+      lastInverterKwKeyRef.current = kwPrefKey(systemSizeKw);
+      return;
+    }
+    const key = kwPrefKey(systemSizeKw);
+    if (!key || key === lastInverterKwKeyRef.current) return;
+    lastInverterKwKeyRef.current = key;
+    const hit = lookupLastInverter(lastInverterByKw, systemSizeKw);
+    if (!hit) return;
+    setInverterTypeName(hit.make);
+    setInverterSizeLabelState(hit.sizeLabel);
+  }, [systemSizeKw, lastInverterByKw]);
+
+  // Last subsidy when system size drops under 3 kW (manual / editable paths).
+  useEffect(() => {
+    const band = systemSizeKw > 0 && systemSizeKw < 3 ? "under3" : "other";
+    if (skipSubsidyPrefOnce.current) {
+      skipSubsidyPrefOnce.current = false;
+      lastSubsidyKwBandRef.current = band;
+      return;
+    }
+    if (band === lastSubsidyKwBandRef.current) return;
+    lastSubsidyKwBandRef.current = band;
+    if (band !== "under3" || !lastSubsidyUnder3) return;
+    if (meterType === "commercial") return;
+    if (meterType === "residential" && !applyResidentialSubsidy) return;
+    skipNextResidentialAuto.current = true;
+    setSubsidyAmount(Math.max(0, Number(lastSubsidyUnder3.amount) || 0));
+  }, [systemSizeKw, lastSubsidyUnder3, meterType, applyResidentialSubsidy]);
+
   useEffect(() => {
     setValue("items", [...systemLineItems, ...additionalItems], { shouldValidate: true });
     setValue("tierType", tier);
+    setValue("structureMicron", structureMicron);
     setValue("ratePerKwSnapshot", ratePerKw > 0 ? ratePerKw : null);
     setValue("netPayableAmount", netPayableAmount > 0 ? netPayableAmount : null);
     setValue("ratePackageId", null);
@@ -492,12 +593,15 @@ export function QuotationBuilderForm({
     meterPhaseLabel,
     isCommercial,
     tier,
+    structureMicron,
     ratePerKw,
     netPayableAmount,
     setValue,
   ]);
 
-  const customerComplete = Boolean(customerName?.trim() && customerPhone?.trim().length >= 10);
+  const phoneDigits = (customerPhone ?? "").replace(/\D/g, "");
+  const phoneOk = phoneDigits.length === 0 || phoneDigits.length >= 10;
+  const customerComplete = Boolean(customerName?.trim() && phoneOk);
   const systemComplete = Boolean(
     isFlorianPanelCompany(panelCompany) &&
       wattPeak > 0 &&
@@ -514,9 +618,7 @@ export function QuotationBuilderForm({
   const saveBlockers = useMemo(() => {
     const missing: string[] = [];
     if (!customerName?.trim()) missing.push("customer name");
-    if (!customerPhone?.trim() || customerPhone.trim().length < 10) {
-      missing.push("valid phone (10+ digits)");
-    }
+    if (!phoneOk) missing.push("valid phone (10+ digits) or leave blank");
     if (!isFlorianPanelCompany(panelCompany)) missing.push("panel company");
     if (!(wattPeak > 0)) missing.push("watt peak");
     if (!(panelCount > 0)) missing.push("panel count");
@@ -530,7 +632,7 @@ export function QuotationBuilderForm({
     return missing;
   }, [
     customerName,
-    customerPhone,
+    phoneOk,
     panelCompany,
     wattPeak,
     panelCount,
@@ -645,7 +747,8 @@ export function QuotationBuilderForm({
     }
     const name = (customerName ?? "").trim();
     const phone = (customerPhone ?? "").trim();
-    if (!name || phone.length < 10) {
+    const digits = phone.replace(/\D/g, "");
+    if (!name || (digits.length > 0 && digits.length < 10)) {
       leaveQuote();
       return;
     }
@@ -704,7 +807,11 @@ export function QuotationBuilderForm({
         return;
       }
       if (!customerComplete) {
-        setError("Enter customer name and a valid phone number before saving.");
+        setError(
+          phoneOk
+            ? "Enter customer name before saving."
+            : "Enter a valid phone (10+ digits) or leave it blank."
+        );
         return;
       }
       const payload = {
@@ -777,9 +884,18 @@ export function QuotationBuilderForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Number</label>
-                  <Input {...register("customerPhone")} placeholder="Mobile number" inputMode="tel" className="min-h-11" />
-                  {errors.customerPhone && <p className="mt-1 text-xs text-red-600">{errors.customerPhone.message}</p>}
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                    Number <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <Input
+                    {...register("customerPhone")}
+                    placeholder="Mobile number"
+                    inputMode="tel"
+                    className="min-h-11"
+                  />
+                  {errors.customerPhone && (
+                    <p className="mt-1 text-xs text-red-600">{errors.customerPhone.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -912,6 +1028,8 @@ export function QuotationBuilderForm({
               onPanelMountTypeChange={setPanelMountType}
               onInverterMakeChange={onInverterMakeChange}
               onInverterSizeChange={setInverterSizeLabelState}
+              structureMicron={structureMicron}
+              onStructureMicronChange={setStructureMicron}
               showPricing={!pricingLocked}
               legacyPanelLabel={legacyPanelLabel}
               legacyInverterLabel={

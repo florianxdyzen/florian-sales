@@ -183,6 +183,7 @@ export type QuotationRow = {
   panel_mount_type?: string | null;
   site_charges?: unknown;
   tier_type?: string | null;
+  structure_micron?: number | null;
   rate_per_kw_snapshot?: number | null;
   net_payable_amount?: number | null;
   template_snapshot?: unknown;

@@ -50,11 +50,25 @@ export const siteChargesSchema = z.object({
   floors: floorChargeSchema,
 });
 
+/** Empty OK; if provided, must be at least 10 digits after stripping non-digits. */
+const optionalCustomerPhone = z.preprocess(
+  (v) => (v == null ? "" : String(v)),
+  z
+    .string()
+    .refine(
+      (v) => {
+        const digits = v.replace(/\D/g, "");
+        return digits.length === 0 || digits.length >= 10;
+      },
+      { message: "Enter a valid phone (10+ digits) or leave blank" }
+    )
+);
+
 export const quotationSchema = z.object({
   id: optionalUuid,
   leadId: optionalUuid,
   customerName: z.string().min(1),
-  customerPhone: z.string().min(10),
+  customerPhone: optionalCustomerPhone,
   address: z.string().optional(),
   projectType: z.enum(PROJECT_TYPES).default("residential"),
   quotationNo: z.string().min(1),
@@ -94,6 +108,11 @@ export const quotationSchema = z.object({
   panelMountType: z.enum(PANEL_MOUNT_TYPES).optional().nullable(),
   /** Premium | Regular tier for per-kW solar quotes */
   tierType: z.enum(["premium", "regular"]).default("premium"),
+  /** HDGI structure coating micron (40 / 60 / 80) */
+  structureMicron: z
+    .union([z.literal(40), z.literal(60), z.literal(80)])
+    .optional()
+    .nullable(),
   /** Snapshot of ₹/kW used at quote time (GST inclusive turnkey) */
   ratePerKwSnapshot: z.coerce.number().nonnegative().optional().nullable(),
   /** system cost after discount minus subsidy */

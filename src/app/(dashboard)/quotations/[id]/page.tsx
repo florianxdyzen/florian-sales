@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getQuotation } from "@/actions/quotations";
+import { getQuotation, listLeadsForQuote } from "@/actions/quotations";
 import {
   QuotationDetailActions,
   QuotationSummaryCard,
@@ -22,15 +22,38 @@ export default async function QuotationDetailPage({
     (await hasAuthority(profile.id, "create_quotations"));
   if (!can) redirect("/pipeline");
 
+  const canDuplicate =
+    profile.role === "admin" ||
+    profile.role === "sales_manager" ||
+    profile.role === "sales_executive" ||
+    (await hasAuthority(profile.id, "create_quotations")) ||
+    (await hasAuthority(profile.id, "manage_quotations"));
+
+  const canAddLead =
+    profile.role === "admin" ||
+    profile.role === "sales_manager" ||
+    profile.role === "tele_caller" ||
+    profile.role === "sales_executive" ||
+    (await hasAuthority(profile.id, "add_edit_leads")) ||
+    (await hasAuthority(profile.id, "full_access"));
+
   const { id } = await params;
-  const quote = await getQuotation(id).catch(() => null);
+  const [quote, leads] = await Promise.all([
+    getQuotation(id).catch(() => null),
+    canDuplicate ? listLeadsForQuote().catch(() => []) : Promise.resolve([]),
+  ]);
   if (!quote) notFound();
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <QuotationSummaryCard quote={quote} />
-        <QuotationDetailActions quote={quote} />
+        <QuotationDetailActions
+          quote={quote}
+          leads={leads}
+          canAddLead={canAddLead}
+          canDuplicate={canDuplicate}
+        />
       </div>
 
       {quote.lead_id && (

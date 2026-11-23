@@ -1,5 +1,10 @@
 /** Tier-specific structure & warranty copy shown on solar proposals. */
 
+import {
+  applyMicronToSpec,
+  type StructureMicron,
+} from "@/lib/quotations/structure-micron";
+
 export type QuoteTierCopy = {
   structureMounting: string;
   structureRafter: string;
@@ -27,6 +32,14 @@ export const REGULAR_TIER_COPY: QuoteTierCopy = {
   ],
 };
 
-export function quoteTierCopy(tier: "premium" | "regular" | null | undefined): QuoteTierCopy {
-  return tier === "regular" ? REGULAR_TIER_COPY : PREMIUM_TIER_COPY;
+export function quoteTierCopy(
+  tier: "premium" | "regular" | null | undefined,
+  micron?: StructureMicron | null
+): QuoteTierCopy {
+  const base = tier === "regular" ? REGULAR_TIER_COPY : PREMIUM_TIER_COPY;
+  if (micron == null) return base;
+  return {
+    ...base,
+    structureMounting: applyMicronToSpec(base.structureMounting, micron),
+  };
 }

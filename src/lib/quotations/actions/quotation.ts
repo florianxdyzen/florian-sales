@@ -12,6 +12,11 @@ import { persistQuotationRow } from "@/lib/quotations/quotation-persist";
 import { normalizeSolarTemplate } from "@/lib/quotations/quotation-template";
 import { pickTemplateSnapshot } from "@/lib/quotations/template-snapshot";
 import { ATTACHMENTS_BUCKET, getStoragePublicUrl } from "@/lib/storage-url";
+import {
+  mergeLastInverterByKw,
+  parseLastInverterByKw,
+} from "@/lib/quotations/quote-prefs";
+import { parseStructureMicron } from "@/lib/quotations/structure-micron";
 
 const r2 = (n: number) => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
 
@@ -149,7 +154,7 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
       lead_id: data.leadId ?? null,
       template_kind: "solar",
       customer_name: data.customerName,
-      customer_phone: data.customerPhone,
+      customer_phone: (data.customerPhone ?? "").trim() || null,
       customer_address: data.address ?? null,
       project_type: data.projectType ?? "residential",
       status: data.status,
@@ -188,6 +193,7 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
       geda_charge_amount: data.gedaChargeAmount ?? null,
       panel_mount_type: data.panelMountType ?? null,
       tier_type: data.tierType ?? "premium",
+      structure_micron: parseStructureMicron(data.structureMicron),
       rate_per_kw_snapshot: data.ratePerKwSnapshot ?? null,
       net_payable_amount: data.netPayableAmount ?? null,
       template_snapshot: templateSnapshot,
@@ -262,16 +268,63 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
     );
     if (insertError) throw dbError(insertError, "Failed to save quotation items");
 
+    const prefPatch: Record<string, unknown> = { updated_at: now };
     if (data.bomQuoteOnly === false && data.bomItems) {
-      const savedLast = await supabase
+      prefPatch.last_bom_items = data.bomItems;
+    }
+    const systemKw = Number(data.systemSizeKw ?? 0);
+    const inverterMake = (data.inverterTypeName ?? "").trim();
+    const inverterSize = (data.inverterSizeLabel ?? "").trim();
+    if (systemKw > 0 && inverterMake && inverterSize) {
+      const prefsRow = await supabase
         .from("quotation_company_settings")
-        .update({ last_bom_items: data.bomItems, updated_at: now })
-        .eq("company_id", companyId);
-      if (
-        savedLast.error &&
-        !/last_bom_items/i.test(`${savedLast.error.message ?? ""} ${savedLast.error.details ?? ""}`)
-      ) {
-        console.error("[upsertQuotation] last-used BOM", savedLast.error);
+        .select("last_inverter_by_kw")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      const existingMap = parseLastInverterByKw(
+        prefsRow.error ? {} : prefsRow.data?.last_inverter_by_kw
+      );
+      prefPatch.last_inverter_by_kw = mergeLastInverterByKw(
+        existingMap,
+        systemKw,
+        inverterMake,
+        inverterSize
+      );
+    }
+    if (systemKw > 0 && systemKw < 3) {
+      prefPatch.last_subsidy_under_3kw = {
+        amount: Math.max(0, Number(data.subsidy ?? 0)),
+        scheme: data.subsidyScheme,
+        updatedAt: now,
+      };
+    }
+
+    if (Object.keys(prefPatch).length > 1) {
+      let patch = { ...prefPatch };
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const savedPrefs = await supabase
+          .from("quotation_company_settings")
+          .update(patch)
+          .eq("company_id", companyId);
+        if (!savedPrefs.error) break;
+        const missing = savedPrefs.error.message?.match(
+          /Could not find the '([^']+)' column/i
+        )?.[1];
+        if (missing && missing in patch) {
+          const { [missing]: _drop, ...rest } = patch;
+          patch = rest;
+          if (Object.keys(patch).length <= 1) break;
+          continue;
+        }
+        if (
+          /last_inverter_by_kw|last_subsidy_under_3kw|last_bom_items/i.test(
+            `${savedPrefs.error.message ?? ""} ${savedPrefs.error.details ?? ""}`
+          )
+        ) {
+          break;
+        }
+        console.error("[upsertQuotation] company prefs", savedPrefs.error);
+        break;
       }
     }
 
@@ -320,7 +373,16 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
   }
 }
 
-export async function duplicateQuotation(id: string): Promise<string> {
+export type DuplicateQuotationOverrides = {
+  customerName: string;
+  customerPhone?: string | null;
+  leadId?: string | null;
+};
+
+export async function duplicateQuotation(
+  id: string,
+  overrides?: DuplicateQuotationOverrides
+): Promise<string> {
   const { supabase, userId, companyId, canManageQuotations } = await getQuotationContext();
   if (!canManageQuotations) {
     throw new Error("You do not have permission to modify quotations.");
@@ -333,57 +395,95 @@ export async function duplicateQuotation(id: string): Promise<string> {
     .single();
   if (error) throw dbError(error, "Failed to load quotation");
 
-  const { data: q, error: insertError } = await supabase
-    .from("quotations")
-    .insert({
-      company_id: companyId,
-      quotation_no: `${orig.quotation_no}-R${Date.now().toString().slice(-4)}`,
-      lead_id: orig.lead_id,
-      template_kind: orig.template_kind ?? "solar",
-      customer_name: orig.customer_name,
-      customer_phone: orig.customer_phone,
-      customer_address: orig.customer_address,
-      project_type: orig.project_type ?? "residential",
-      status: "draft",
-      quote_date: new Date().toISOString().slice(0, 10),
-      valid_till: orig.valid_till,
-      subtotal: orig.subtotal,
-      discount_total: orig.discount_total,
-      taxable_total: orig.taxable_total,
-      gst_total: orig.gst_total,
-      grand_total: orig.grand_total,
-      notes: orig.notes,
-      terms: orig.terms,
-      site_charges: orig.site_charges ?? null,
-      rate_package_id: orig.rate_package_id ?? null,
-      module_type_name: orig.module_type_name ?? null,
-      module_company_name: orig.module_company_name ?? null,
-      module_capacity_label: orig.module_capacity_label ?? null,
-      inverter_type_name: orig.inverter_type_name ?? null,
-      inverter_size_label: orig.inverter_size_label ?? null,
-      system_size_kw: orig.system_size_kw ?? null,
-      panel_count: orig.panel_count ?? null,
-      system_cost: orig.system_cost ?? null,
-      min_sale_price_snapshot: orig.min_sale_price_snapshot ?? null,
-      subsidy_scheme: orig.subsidy_scheme ?? "residential",
-      subsidy: orig.subsidy ?? null,
-      meter_phase: orig.meter_phase ?? null,
-      meter_charge_amount: orig.meter_charge_amount ?? null,
-      meter_phase_label: orig.meter_phase_label ?? null,
-      price_per_kw_excl_gst: orig.price_per_kw_excl_gst ?? null,
-      commercial_gst_percent: orig.commercial_gst_percent ?? null,
-      geda_charge_amount: orig.geda_charge_amount ?? null,
-      panel_mount_type: orig.panel_mount_type ?? null,
-      tier_type: orig.tier_type ?? "premium",
-      rate_per_kw_snapshot: orig.rate_per_kw_snapshot ?? null,
-      net_payable_amount: orig.net_payable_amount ?? null,
-      ...(Array.isArray(orig.bom_items) ? { bom_items: orig.bom_items } : {}),
-      created_by: userId,
-      updated_by: userId,
-    })
-    .select("id")
-    .single();
-  if (insertError) throw dbError(insertError, "Failed to duplicate quotation");
+  const customerName = (overrides?.customerName ?? orig.customer_name ?? "").trim();
+  if (customerName.length < 2) {
+    throw new Error("Customer name is required to duplicate.");
+  }
+  const phoneRaw =
+    overrides?.customerPhone !== undefined
+      ? (overrides.customerPhone ?? "").trim()
+      : (orig.customer_phone ?? "").trim();
+  const phoneDigits = phoneRaw.replace(/\D/g, "");
+  if (phoneDigits.length > 0 && phoneDigits.length < 10) {
+    throw new Error("Enter a valid phone (10+ digits) or leave blank.");
+  }
+  const leadId =
+    overrides?.leadId !== undefined ? overrides.leadId : (orig.lead_id as string | null);
+
+  if (leadId) {
+    const lead = await loadLead(supabase, companyId, leadId);
+    if (lead.sales_stage === "lost") {
+      throw new Error("Cannot link a duplicated quotation to a lost lead.");
+    }
+  }
+
+  const insertPayload: Record<string, unknown> = {
+    company_id: companyId,
+    quotation_no: `${orig.quotation_no}-R${Date.now().toString().slice(-4)}`,
+    lead_id: leadId ?? null,
+    template_kind: orig.template_kind ?? "solar",
+    customer_name: customerName,
+    customer_phone: phoneRaw || null,
+    customer_address: orig.customer_address,
+    project_type: orig.project_type ?? "residential",
+    status: "draft",
+    quote_date: new Date().toISOString().slice(0, 10),
+    valid_till: orig.valid_till,
+    subtotal: orig.subtotal,
+    discount_total: orig.discount_total,
+    discount_percent: orig.discount_percent ?? 0,
+    taxable_total: orig.taxable_total,
+    gst_total: orig.gst_total,
+    grand_total: orig.grand_total,
+    notes: orig.notes,
+    terms: orig.terms,
+    site_charges: orig.site_charges ?? null,
+    rate_package_id: orig.rate_package_id ?? null,
+    module_type_name: orig.module_type_name ?? null,
+    module_company_name: orig.module_company_name ?? null,
+    module_capacity_label: orig.module_capacity_label ?? null,
+    inverter_type_name: orig.inverter_type_name ?? null,
+    inverter_size_label: orig.inverter_size_label ?? null,
+    system_size_kw: orig.system_size_kw ?? null,
+    panel_count: orig.panel_count ?? null,
+    system_cost: orig.system_cost ?? null,
+    min_sale_price_snapshot: orig.min_sale_price_snapshot ?? null,
+    subsidy_scheme: orig.subsidy_scheme ?? "residential",
+    subsidy: orig.subsidy ?? null,
+    meter_phase: orig.meter_phase ?? null,
+    meter_charge_amount: orig.meter_charge_amount ?? null,
+    meter_phase_label: orig.meter_phase_label ?? null,
+    price_per_kw_excl_gst: orig.price_per_kw_excl_gst ?? null,
+    commercial_gst_percent: orig.commercial_gst_percent ?? null,
+    geda_charge_amount: orig.geda_charge_amount ?? null,
+    panel_mount_type: orig.panel_mount_type ?? null,
+    tier_type: orig.tier_type ?? "premium",
+    structure_micron: parseStructureMicron(orig.structure_micron),
+    rate_per_kw_snapshot: orig.rate_per_kw_snapshot ?? null,
+    net_payable_amount: orig.net_payable_amount ?? null,
+    template_snapshot: orig.template_snapshot ?? null,
+    ...(Array.isArray(orig.bom_items) ? { bom_items: orig.bom_items } : {}),
+    created_by: userId,
+    updated_by: userId,
+  };
+
+  let q: { id: string } | null = null;
+  let insertError: { message?: string; code?: string; details?: string } | null = null;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const result = await supabase.from("quotations").insert(insertPayload).select("id").single();
+    if (!result.error && result.data) {
+      q = result.data;
+      break;
+    }
+    insertError = result.error;
+    const missing = result.error?.message?.match(/Could not find the '([^']+)' column/i)?.[1];
+    if (missing && missing in insertPayload) {
+      delete insertPayload[missing];
+      continue;
+    }
+    break;
+  }
+  if (!q) throw dbError(insertError, "Failed to duplicate quotation");
 
   if (orig.quotation_items?.length) {
     const { error: itemsError } = await supabase.from("quotation_items").insert(
@@ -396,6 +496,7 @@ export async function duplicateQuotation(id: string): Promise<string> {
   }
 
   revalidatePath("/quotations");
+  revalidatePath(`/quotations/${q.id}`);
   return q.id;
 }
 

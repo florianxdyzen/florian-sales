@@ -51,6 +51,7 @@ export type ProposalInput = {
   meterPhaseLabel?: string | null;
   panelMountType?: string | null;
   tierType?: "premium" | "regular" | null;
+  structureMicron?: 40 | 60 | 80 | null;
 };
 
 export type CompanyInfo = {

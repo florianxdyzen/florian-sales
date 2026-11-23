@@ -17,6 +17,10 @@ import {
   type FlorianInverterMake,
   type FlorianPanelCompany,
 } from "@/lib/quotations/florian-brands";
+import {
+  STRUCTURE_MICRONS,
+  type StructureMicron,
+} from "@/lib/quotations/structure-micron";
 import { cn } from "@/lib/utils";
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -80,6 +84,8 @@ export function SystemDetailsPanel({
   onInverterMakeChange,
   onInverterSizeChange,
   onPanelMountTypeChange,
+  structureMicron = 60,
+  onStructureMicronChange,
   showPricing = true,
   legacyPanelLabel = "",
   legacyInverterLabel = "",
@@ -105,6 +111,8 @@ export function SystemDetailsPanel({
   onInverterMakeChange: (make: FlorianInverterMake) => void;
   onInverterSizeChange: (size: string) => void;
   onPanelMountTypeChange?: (mount: PanelMountType) => void;
+  structureMicron?: StructureMicron;
+  onStructureMicronChange?: (micron: StructureMicron) => void;
   showPricing?: boolean;
   /** Saved brand outside the chip list (edit path). */
   legacyPanelLabel?: string;
@@ -288,6 +296,33 @@ export function SystemDetailsPanel({
           )}
         </div>
       )}
+
+      <div>
+        <FieldLabel>Structure micron</FieldLabel>
+        <div className="grid grid-cols-3 gap-2">
+          {STRUCTURE_MICRONS.map((micron) => {
+            const active = structureMicron === micron;
+            return (
+              <button
+                key={micron}
+                type="button"
+                onClick={() => onStructureMicronChange?.(micron)}
+                className={cn(
+                  "min-h-11 rounded-xl border px-3 py-2.5 text-sm font-semibold transition",
+                  active
+                    ? "border-brand-300 bg-brand-50 text-brand-900 ring-1 ring-brand-200"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                )}
+              >
+                {micron} Micron
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500">
+          Auto: ≤2 kW → 40 · up to 50 kW → 60 · above 50 kW → 80. Change anytime.
+        </p>
+      </div>
 
       <div>
         <FieldLabel>Inverter make</FieldLabel>

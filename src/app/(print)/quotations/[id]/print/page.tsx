@@ -23,6 +23,11 @@ import {
   usesApplianceProposalPrint,
   usesSolarProposalPrint,
 } from "@/lib/quotations/types";
+import { quotationPdfBasename } from "@/lib/quotations/quote-pdf-filename";
+import {
+  defaultStructureMicron,
+  parseStructureMicron,
+} from "@/lib/quotations/structure-micron";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -42,12 +47,22 @@ export default async function QuotationPrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ print?: string }>;
+  searchParams: Promise<{ print?: string; download?: string }>;
 }) {
   const { id } = await params;
-  const { print } = await searchParams;
+  const { print, download } = await searchParams;
   const quote = await getQuotation(id).catch(() => null);
   if (!quote) notFound();
+
+  const autoPrint = print === "1" || download === "1";
+  const downloadBasename = quotationPdfBasename({
+    customerName: quote.customer_name,
+    systemSizeKw: quote.system_size_kw,
+    quotationNo: quote.quotation_no,
+  });
+  const structureMicron =
+    parseStructureMicron(quote.structure_micron) ??
+    defaultStructureMicron(Number(quote.system_size_kw ?? 0));
 
   const supabase = await createClient();
   const { data: settings } = await supabase
@@ -71,6 +86,7 @@ export default async function QuotationPrintPage({
         panelCount: quote.panel_count,
         wattPeakLabel: quote.module_capacity_label,
         inverterSize: quote.inverter_size_label,
+        structureMicron,
       })
     );
 
@@ -80,11 +96,12 @@ export default async function QuotationPrintPage({
         <PrintToolbar
           quotationNo={quote.quotation_no}
           backHref={`/quotations/${id}`}
-          autoPrint={print === "1"}
+          autoPrint={autoPrint}
+          downloadBasename={downloadBasename}
         />
         <SolarProposalDocument
           mode="print"
-          data={data}
+          data={{ ...data, structureMicron }}
           company={companyInfo}
           template={template}
           canViewItemPricing
@@ -102,7 +119,8 @@ export default async function QuotationPrintPage({
         <PrintToolbar
           quotationNo={quote.quotation_no}
           backHref={`/quotations/${id}`}
-          autoPrint={print === "1"}
+          autoPrint={autoPrint}
+          downloadBasename={downloadBasename}
         />
         <ApplianceQuotationDocument mode="print" data={data} company={companyInfo} />
       </>

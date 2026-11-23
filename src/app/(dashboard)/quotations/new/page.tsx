@@ -13,6 +13,10 @@ import { peekNextQuotationNumber } from "@/lib/quotations/actions/quotation-numb
 import { requireAuth, hasAuthority } from "@/lib/auth";
 import { getQuotationContext } from "@/lib/quotations/context";
 import { parseFlorianBom } from "@/lib/quotations/sample-bom";
+import {
+  parseLastInverterByKw,
+  parseLastSubsidyUnder3,
+} from "@/lib/quotations/quote-prefs";
 import type { QuoteTemplateKind } from "@/lib/quotations/types";
 
 export default async function NewQuotationPage({
@@ -49,14 +53,28 @@ export default async function NewQuotationPage({
 
   const quotationContext = await getQuotationContext().catch(() => null);
   const canManageCatalog = quotationContext?.canManageCatalog ?? false;
-  const lastBomResult = quotationContext
-    ? await quotationContext.supabase
+  let lastBomItems = null as ReturnType<typeof parseFlorianBom>;
+  let lastInverterByKw = parseLastInverterByKw({});
+  let lastSubsidyUnder3Kw = parseLastSubsidyUnder3(null);
+  if (quotationContext) {
+    const fullPrefs = await quotationContext.supabase
+      .from("quotation_company_settings")
+      .select("last_bom_items, last_inverter_by_kw, last_subsidy_under_3kw")
+      .eq("company_id", quotationContext.companyId)
+      .maybeSingle();
+    if (fullPrefs.error) {
+      const legacy = await quotationContext.supabase
         .from("quotation_company_settings")
         .select("last_bom_items")
         .eq("company_id", quotationContext.companyId)
-        .maybeSingle()
-    : { data: null };
-  const lastBomItems = parseFlorianBom(lastBomResult.data?.last_bom_items);
+        .maybeSingle();
+      lastBomItems = parseFlorianBom(legacy.data?.last_bom_items);
+    } else {
+      lastBomItems = parseFlorianBom(fullPrefs.data?.last_bom_items);
+      lastInverterByKw = parseLastInverterByKw(fullPrefs.data?.last_inverter_by_kw);
+      lastSubsidyUnder3Kw = parseLastSubsidyUnder3(fullPrefs.data?.last_subsidy_under_3kw);
+    }
+  }
 
   const [leads, catalog, solarCatalog, panels, inverters, template, nextQuotationNo, initialLead] =
     await Promise.all([
@@ -115,6 +133,8 @@ export default async function NewQuotationPage({
         }
         initialKind={kind}
         initialBomItems={lastBomItems}
+        lastInverterByKw={lastInverterByKw}
+        lastSubsidyUnder3Kw={lastSubsidyUnder3Kw}
       />
     </div>
   );

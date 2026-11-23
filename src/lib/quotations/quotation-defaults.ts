@@ -4,6 +4,7 @@ import { parseSubsidyScheme } from "@/lib/quotations/subsidy";
 import { normalizeCommercialGstPercent, parsePanelMountType } from "@/lib/quotations/commercial";
 import { METER_PHASES, type MeterPhase } from "@/lib/quotations/meter-phase";
 import { parseFlorianBom } from "@/lib/quotations/sample-bom";
+import { parseStructureMicron } from "@/lib/quotations/structure-micron";
 import type { QuotationPayload } from "@/lib/quotations/validations";
 import type { QuotationRow } from "@/lib/quotations/types";
 
@@ -74,6 +75,7 @@ export function quotationToBuilderDefaults(
     gedaChargeAmount: num(quote.geda_charge_amount),
     panelMountType: parsePanelMountType(quote.panel_mount_type),
     tierType: quote.tier_type === "regular" ? "regular" : "premium",
+    structureMicron: parseStructureMicron(quote.structure_micron),
     ratePerKwSnapshot: num(quote.rate_per_kw_snapshot),
     netPayableAmount: num(quote.net_payable_amount),
     bomItems: parseFlorianBom(quote.bom_items) ?? undefined,

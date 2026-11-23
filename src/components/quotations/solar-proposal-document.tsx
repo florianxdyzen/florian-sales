@@ -207,7 +207,11 @@ export function SolarProposalDocument({
       : bomTier === "regular"
         ? "regular"
         : "premium";
-  const tierCopy = quoteTierCopy(effectiveTier);
+  const structureMicron =
+    data.structureMicron === 40 || data.structureMicron === 60 || data.structureMicron === 80
+      ? data.structureMicron
+      : null;
+  const tierCopy = quoteTierCopy(effectiveTier, structureMicron);
   const warrantyRows = warrantyRowsForQuote(tierCopy.warrantyRows, {
     tier: effectiveTier,
     projectType: data.projectType,
@@ -218,10 +222,6 @@ export function SolarProposalDocument({
       ? Number(data.systemSizeKw)
       : calc.capacityKw;
   const capacityKwLabel = systemKwDisplay ? `${capacityText(systemKwDisplay)} kW` : "—";
-  const perKwRate =
-    systemKwDisplay > 0 && calc.listSystemCost > 0
-      ? calc.listSystemCost / systemKwDisplay
-      : 0;
   const projectCost = calc.payableBeforeSubsidy;
   const terms = scopeItems(template.termsText);
   const ourScope = scopeItems(template.ourScope);
@@ -286,10 +286,6 @@ export function SolarProposalDocument({
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>Per kW Rate (GST included)</td>
-                  <td className="amt">{amt(perKwRate)}</td>
-                </tr>
                 <tr>
                   <td>Roof ON-Grid Solar Power Plant System</td>
                   <td className="amt">{amt(calc.listSystemCost)}</td>

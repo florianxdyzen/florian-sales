@@ -6,6 +6,7 @@ import {
   type SolarProposalTemplate,
 } from "@/lib/quotations/quotation-template";
 import { mergeTemplateWithSnapshot } from "@/lib/quotations/template-snapshot";
+import { parseStructureMicron } from "@/lib/quotations/structure-micron";
 import type { QuotationRow } from "@/lib/quotations/types";
 
 type QuotationCompanySettings = {
@@ -104,6 +105,7 @@ export function buildQuotationPrintData(
       quote.meter_phase_label?.trim() || (meterChargeAmount > 0 ? "As per DISCOM" : null),
     panelMountType: quote.panel_mount_type ?? null,
     tierType: quote.tier_type === "regular" ? "regular" : quote.tier_type === "premium" ? "premium" : null,
+    structureMicron: parseStructureMicron(quote.structure_micron),
   };
 }
 

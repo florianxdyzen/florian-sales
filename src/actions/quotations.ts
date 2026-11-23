@@ -34,7 +34,7 @@ const upsertSchema = z.object({
   id: z.string().uuid().optional(),
   leadId: z.string().uuid().nullable().optional(),
   customerName: z.string().min(2).optional(),
-  customerPhone: z.string().min(10).optional(),
+  customerPhone: z.string().optional(),
   customerAddress: z.string().nullable().optional(),
   customerCity: z.string().nullable().optional(),
   templateKind: z.enum(["solar", "premium", "non_solar"]),
@@ -225,8 +225,9 @@ export async function upsertQuotation(
       : lead?.city ?? null;
 
   if (customerName.length < 2) return { ok: false, error: "Customer name is required" };
-  if (customerPhone.replace(/\D/g, "").length < 10) {
-    return { ok: false, error: "A valid customer phone is required" };
+  const phoneDigits = customerPhone.replace(/\D/g, "");
+  if (phoneDigits.length > 0 && phoneDigits.length < 10) {
+    return { ok: false, error: "Enter a valid phone (10+ digits) or leave blank" };
   }
 
   const canPrice =

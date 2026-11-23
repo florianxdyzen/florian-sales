@@ -220,7 +220,11 @@ export function QuotationBuilderFormAppliance({
       leaveQuote();
       return;
     }
-    if (customerName.trim().length < 2 || customerPhone.trim().length < 10) {
+    const phoneDigits = customerPhone.replace(/\D/g, "");
+    if (
+      customerName.trim().length < 2 ||
+      (phoneDigits.length > 0 && phoneDigits.length < 10)
+    ) {
       leaveQuote();
       return;
     }
@@ -307,8 +311,13 @@ export function QuotationBuilderFormAppliance({
           setError("Add at least one product");
           return;
         }
-        if (!customerName.trim() || customerPhone.trim().length < 10) {
-          setError("Enter customer name and a valid phone number (10+ digits).");
+        const phoneDigits = customerPhone.replace(/\D/g, "");
+        if (!customerName.trim()) {
+          setError("Enter customer name.");
+          return;
+        }
+        if (phoneDigits.length > 0 && phoneDigits.length < 10) {
+          setError("Enter a valid phone (10+ digits) or leave it blank.");
           return;
         }
         startTransition(async () => {
@@ -376,7 +385,7 @@ export function QuotationBuilderFormAppliance({
             />
           </div>
           <div>
-            <Label>Phone *</Label>
+            <Label>Phone (optional)</Label>
             <Input
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}

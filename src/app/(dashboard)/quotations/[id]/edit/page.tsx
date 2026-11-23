@@ -7,6 +7,10 @@ import { getRateCardPanels } from "@/lib/quotations/data/rate-card";
 import { getRateCardInverters } from "@/lib/quotations/data/rate-card-inverters";
 import { loadSolarTemplate } from "@/lib/quotations/data/lookups";
 import { quotationToBuilderDefaults } from "@/lib/quotations/quotation-defaults";
+import {
+  parseLastInverterByKw,
+  parseLastSubsidyUnder3,
+} from "@/lib/quotations/quote-prefs";
 import { requireAuth, hasAuthority } from "@/lib/auth";
 import { getQuotationContext } from "@/lib/quotations/context";
 
@@ -77,9 +81,21 @@ export default async function EditQuotationPage({
   }
 
   if (quote.template_kind === "solar" || quote.template_kind === "premium") {
-    const { canManageCatalog } = await getQuotationContext().catch(() => ({
-      canManageCatalog: false,
-    }));
+    const quotationContext = await getQuotationContext().catch(() => null);
+    const canManageCatalog = quotationContext?.canManageCatalog ?? false;
+    let lastInverterByKw = parseLastInverterByKw({});
+    let lastSubsidyUnder3Kw = parseLastSubsidyUnder3(null);
+    if (quotationContext) {
+      const prefs = await quotationContext.supabase
+        .from("quotation_company_settings")
+        .select("last_inverter_by_kw, last_subsidy_under_3kw")
+        .eq("company_id", quotationContext.companyId)
+        .maybeSingle();
+      if (!prefs.error) {
+        lastInverterByKw = parseLastInverterByKw(prefs.data?.last_inverter_by_kw);
+        lastSubsidyUnder3Kw = parseLastSubsidyUnder3(prefs.data?.last_subsidy_under_3kw);
+      }
+    }
     const [solarCatalog, allPanels, inverters, template, leads] = await Promise.all([
       getCatalogForQuotation(),
       getRateCardPanels().catch(() => []),
@@ -120,6 +136,8 @@ export default async function EditQuotationPage({
           quoteTier={quoteTier}
           defaultValues={defaults}
           proposalTemplate={template}
+          lastInverterByKw={lastInverterByKw}
+          lastSubsidyUnder3Kw={lastSubsidyUnder3Kw}
         />
       </div>
     );

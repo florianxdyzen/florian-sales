@@ -1,4 +1,8 @@
 import type { ProposalLineItem } from "@/lib/quotations/solar-proposal-calculations";
+import {
+  applyMicronToSpec,
+  type StructureMicron,
+} from "@/lib/quotations/structure-micron";
 
 export type FlorianBomItem = {
   id: string;
@@ -115,14 +119,16 @@ export type FlorianBomSystem = {
   panelCount?: number | null;
   wattPeakLabel?: string | null;
   inverterSize?: string | null;
+  structureMicron?: StructureMicron | null;
 };
 
-/** Fill module quantity, watt peak, and inverter size from the quote when the row is still the sample wording. */
+/** Fill module quantity, watt peak, inverter size, and structure micron from the quote. */
 export function presentFlorianBom(rows: FlorianBomItem[], system: FlorianBomSystem): FlorianBomItem[] {
   const sampleById = new Map(FLORIAN_SAMPLE_BOM.map((row) => [row.id, row]));
   const panels = Number(system.panelCount) > 0 ? Math.round(Number(system.panelCount)) : 0;
   const watts = (system.wattPeakLabel ?? "").match(/(\d{2,4})/)?.[1];
   const inverterSize = (system.inverterSize ?? "").trim();
+  const micron = system.structureMicron ?? null;
 
   return rows.map((row) => {
     const sample = sampleById.get(row.id);
@@ -141,6 +147,9 @@ export function presentFlorianBom(rows: FlorianBomItem[], system: FlorianBomSyst
           ? `${row.specification}. ${inverterSize}`
           : row.specification;
       return { ...row, specification };
+    }
+    if (row.id === "structure" && micron != null) {
+      return { ...row, specification: applyMicronToSpec(row.specification, micron) };
     }
     if (row.id === "jhook" && sample && row.quantity === sample.quantity && panels > 0) {
       return { ...row, quantity: `${panels * 4} pcs` };
