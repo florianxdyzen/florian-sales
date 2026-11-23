@@ -17,6 +17,7 @@ import type { RateCardInverter } from "@/lib/quotations/rate-card-inverters";
 import type { DEFAULT_SOLAR_TEMPLATE } from "@/lib/quotations/quotation-template";
 import type { FlorianBomItem } from "@/lib/quotations/sample-bom";
 import type {
+  LastFinalAmountPref,
   LastInverterPref,
   LastSubsidyUnder3Pref,
 } from "@/lib/quotations/quote-prefs";
@@ -62,6 +63,7 @@ export function NewQuotationWorkspace({
   initialBomItems = null,
   lastInverterByKw = null,
   lastSubsidyUnder3Kw = null,
+  lastFinalAmountByPanels = null,
 }: {
   leads: QuoteLeadOption[];
   catalog: CatalogItem[];
@@ -78,6 +80,7 @@ export function NewQuotationWorkspace({
   initialBomItems?: FlorianBomItem[] | null;
   lastInverterByKw?: Record<string, LastInverterPref> | null;
   lastSubsidyUnder3Kw?: LastSubsidyUnder3Pref | null;
+  lastFinalAmountByPanels?: Record<string, LastFinalAmountPref> | null;
 }) {
   const kind = initialKind;
   const isSolar = usesSolarRateCardBuilder(kind);
@@ -124,6 +127,7 @@ export function NewQuotationWorkspace({
           initialBomItems={initialBomItems}
           lastInverterByKw={lastInverterByKw}
           lastSubsidyUnder3Kw={lastSubsidyUnder3Kw}
+          lastFinalAmountByPanels={lastFinalAmountByPanels}
           defaultValues={{
             leadId: initialCustomer.id ?? undefined,
             customerName: initialCustomer.name,

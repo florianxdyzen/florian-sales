@@ -81,9 +81,13 @@ import {
 } from "@/lib/quotations/structure-micron";
 import {
   kwPrefKey,
+  lookupLastFinalAmount,
   lookupLastInverter,
+  panelsPrefKey,
+  parseLastFinalAmountByPanels,
   parseLastInverterByKw,
   parseLastSubsidyUnder3,
+  type LastFinalAmountPref,
   type LastInverterPref,
   type LastSubsidyUnder3Pref,
 } from "@/lib/quotations/quote-prefs";
@@ -173,6 +177,7 @@ export function QuotationBuilderForm({
   initialBomItems = null,
   lastInverterByKw: lastInverterByKwProp = null,
   lastSubsidyUnder3Kw: lastSubsidyUnder3KwProp = null,
+  lastFinalAmountByPanels: lastFinalAmountByPanelsProp = null,
 }: {
   catalog: CatalogItem[];
   /** @deprecated Solar System Details uses fixed Florian panel chips. */
@@ -191,6 +196,7 @@ export function QuotationBuilderForm({
   initialBomItems?: FlorianBomItem[] | null;
   lastInverterByKw?: Record<string, LastInverterPref> | null;
   lastSubsidyUnder3Kw?: LastSubsidyUnder3Pref | null;
+  lastFinalAmountByPanels?: Record<string, LastFinalAmountPref> | null;
 }) {
   void _panels;
   void _inverters;
@@ -202,6 +208,10 @@ export function QuotationBuilderForm({
   const lastSubsidyUnder3 = useMemo(
     () => lastSubsidyUnder3KwProp ?? parseLastSubsidyUnder3(null),
     [lastSubsidyUnder3KwProp]
+  );
+  const lastFinalAmountByPanels = useMemo(
+    () => parseLastFinalAmountByPanels(lastFinalAmountByPanelsProp ?? {}),
+    [lastFinalAmountByPanelsProp]
   );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -304,6 +314,19 @@ export function QuotationBuilderForm({
     defaultValues?.id
       ? initialRate.systemSizeKw > 0 && initialRate.systemSizeKw < 3
         ? "under3"
+        : "other"
+      : "init"
+  );
+  const skipFinalAmountPrefOnce = useRef(Boolean(defaultValues?.id));
+  const initialWattPeak = wattsFromCapacity(initialRate.moduleCapacityLabel);
+  const lastFinalAmountKeyRef = useRef<string | null>(
+    defaultValues?.id ? panelsPrefKey(initialWattPeak, initialRate.panelCount) : null
+  );
+  const skipMeterPhasePrefOnce = useRef(Boolean(defaultValues?.id));
+  const lastMeterKwBandRef = useRef(
+    defaultValues?.id
+      ? initialRate.systemSizeKw > 0 && initialRate.systemSizeKw < 6
+        ? "under6"
         : "other"
       : "init"
   );
@@ -469,6 +492,31 @@ export function QuotationBuilderForm({
     setValue("meterChargeAmount", amount, { shouldDirty: true });
   }
 
+  // System < 6 kW → auto-select single phase (staff can still change).
+  useEffect(() => {
+    const band = systemSizeKw > 0 && systemSizeKw < 6 ? "under6" : "other";
+    if (skipMeterPhasePrefOnce.current) {
+      skipMeterPhasePrefOnce.current = false;
+      lastMeterKwBandRef.current = band;
+      return;
+    }
+    if (band !== "under6") {
+      lastMeterKwBandRef.current = band;
+      return;
+    }
+    if (band === lastMeterKwBandRef.current) return;
+    lastMeterKwBandRef.current = band;
+    const phase: MeterPhase = "single_phase_1_6";
+    const opt = phaseOptions.find((o) => o.id === phase);
+    setMeterPhase(phase);
+    setValue("meterPhase", phase, { shouldValidate: true });
+    const label = isCommercial
+      ? commercialMeterPhaseLabel(phase)
+      : opt?.label ?? null;
+    setMeterPhaseLabel(label ?? "");
+    setValue("meterPhaseLabel", label);
+  }, [systemSizeKw, phaseOptions, isCommercial, setValue]);
+
   useEffect(() => {
     const nextKw = calcSystemKw(wattPeak, panelCount);
     setSystemSizeKw(nextKw);
@@ -508,6 +556,21 @@ export function QuotationBuilderForm({
     setInverterTypeName(hit.make);
     setInverterSizeLabelState(hit.sizeLabel);
   }, [systemSizeKw, lastInverterByKw]);
+
+  // Last Final Amount for the same watt peak × panel count.
+  useEffect(() => {
+    if (skipFinalAmountPrefOnce.current) {
+      skipFinalAmountPrefOnce.current = false;
+      lastFinalAmountKeyRef.current = panelsPrefKey(wattPeak, panelCount);
+      return;
+    }
+    const key = panelsPrefKey(wattPeak, panelCount);
+    if (!key || key === lastFinalAmountKeyRef.current) return;
+    lastFinalAmountKeyRef.current = key;
+    const amount = lookupLastFinalAmount(lastFinalAmountByPanels, wattPeak, panelCount);
+    if (amount == null) return;
+    setSystemCost(amount);
+  }, [wattPeak, panelCount, lastFinalAmountByPanels]);
 
   // Last subsidy when system size drops under 3 kW (manual / editable paths).
   useEffect(() => {

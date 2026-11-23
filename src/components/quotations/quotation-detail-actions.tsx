@@ -81,16 +81,21 @@ export function QuotationDetailActions({
           href={waUrl}
           target="_blank"
           rel="noopener noreferrer"
+          title={`Opens WhatsApp and downloads ${pdfName}.pdf`}
+          onClick={() => {
+            // Same click: open print/download so staff can Save as PDF, then WhatsApp chat.
+            window.open(downloadHref, "_blank", "noopener,noreferrer");
+          }}
           className="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
         >
-          WhatsApp
+          WhatsApp + PDF
         </a>
       ) : (
         <span
           className="inline-flex cursor-not-allowed items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-2 text-sm font-semibold text-[var(--text-muted)]"
           title="Add a customer phone to open WhatsApp"
         >
-          WhatsApp
+          WhatsApp + PDF
         </span>
       )}
       <Link

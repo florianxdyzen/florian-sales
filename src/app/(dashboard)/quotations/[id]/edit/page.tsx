@@ -8,6 +8,7 @@ import { getRateCardInverters } from "@/lib/quotations/data/rate-card-inverters"
 import { loadSolarTemplate } from "@/lib/quotations/data/lookups";
 import { quotationToBuilderDefaults } from "@/lib/quotations/quotation-defaults";
 import {
+  parseLastFinalAmountByPanels,
   parseLastInverterByKw,
   parseLastSubsidyUnder3,
 } from "@/lib/quotations/quote-prefs";
@@ -85,15 +86,31 @@ export default async function EditQuotationPage({
     const canManageCatalog = quotationContext?.canManageCatalog ?? false;
     let lastInverterByKw = parseLastInverterByKw({});
     let lastSubsidyUnder3Kw = parseLastSubsidyUnder3(null);
+    let lastFinalAmountByPanels = parseLastFinalAmountByPanels({});
     if (quotationContext) {
       const prefs = await quotationContext.supabase
         .from("quotation_company_settings")
-        .select("last_inverter_by_kw, last_subsidy_under_3kw")
+        .select(
+          "last_inverter_by_kw, last_subsidy_under_3kw, last_final_amount_by_panels"
+        )
         .eq("company_id", quotationContext.companyId)
         .maybeSingle();
       if (!prefs.error) {
         lastInverterByKw = parseLastInverterByKw(prefs.data?.last_inverter_by_kw);
         lastSubsidyUnder3Kw = parseLastSubsidyUnder3(prefs.data?.last_subsidy_under_3kw);
+        lastFinalAmountByPanels = parseLastFinalAmountByPanels(
+          prefs.data?.last_final_amount_by_panels
+        );
+      } else {
+        const legacy = await quotationContext.supabase
+          .from("quotation_company_settings")
+          .select("last_inverter_by_kw, last_subsidy_under_3kw")
+          .eq("company_id", quotationContext.companyId)
+          .maybeSingle();
+        if (!legacy.error) {
+          lastInverterByKw = parseLastInverterByKw(legacy.data?.last_inverter_by_kw);
+          lastSubsidyUnder3Kw = parseLastSubsidyUnder3(legacy.data?.last_subsidy_under_3kw);
+        }
       }
     }
     const [solarCatalog, allPanels, inverters, template, leads] = await Promise.all([
@@ -138,6 +155,7 @@ export default async function EditQuotationPage({
           proposalTemplate={template}
           lastInverterByKw={lastInverterByKw}
           lastSubsidyUnder3Kw={lastSubsidyUnder3Kw}
+          lastFinalAmountByPanels={lastFinalAmountByPanels}
         />
       </div>
     );

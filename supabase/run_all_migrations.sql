@@ -4814,3 +4814,13 @@ COMMENT ON COLUMN quotation_company_settings.last_inverter_by_kw IS
 
 COMMENT ON COLUMN quotation_company_settings.last_subsidy_under_3kw IS
   '{ amount, scheme, updatedAt } from last solar quote with system size under 3 kW.';
+
+-- ############################################################
+-- >>> 065_last_final_amount_by_panels.sql
+-- ############################################################
+
+ALTER TABLE quotation_company_settings
+  ADD COLUMN IF NOT EXISTS last_final_amount_by_panels JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+COMMENT ON COLUMN quotation_company_settings.last_final_amount_by_panels IS
+  'Map of wattPeak x panelCount to { amount, updatedAt } from last solar quote Final Amount.';

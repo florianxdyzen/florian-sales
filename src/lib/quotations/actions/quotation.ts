@@ -13,8 +13,11 @@ import { normalizeSolarTemplate } from "@/lib/quotations/quotation-template";
 import { pickTemplateSnapshot } from "@/lib/quotations/template-snapshot";
 import { ATTACHMENTS_BUCKET, getStoragePublicUrl } from "@/lib/storage-url";
 import {
+  mergeLastFinalAmountByPanels,
   mergeLastInverterByKw,
+  parseLastFinalAmountByPanels,
   parseLastInverterByKw,
+  wattPeakFromCapacityLabel,
 } from "@/lib/quotations/quote-prefs";
 import { parseStructureMicron } from "@/lib/quotations/structure-micron";
 
@@ -275,21 +278,36 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
     const systemKw = Number(data.systemSizeKw ?? 0);
     const inverterMake = (data.inverterTypeName ?? "").trim();
     const inverterSize = (data.inverterSizeLabel ?? "").trim();
-    if (systemKw > 0 && inverterMake && inverterSize) {
+    const wattPeakSaved = wattPeakFromCapacityLabel(data.moduleCapacityLabel);
+    const panelCountSaved = Math.round(Number(data.panelCount ?? 0) || 0);
+    const finalAmountSaved = Number(data.systemCost ?? 0);
+    const needsInverterMap = systemKw > 0 && inverterMake && inverterSize;
+    const needsFinalAmountMap =
+      wattPeakSaved > 0 && panelCountSaved > 0 && finalAmountSaved > 0;
+
+    if (needsInverterMap || needsFinalAmountMap) {
       const prefsRow = await supabase
         .from("quotation_company_settings")
-        .select("last_inverter_by_kw")
+        .select("last_inverter_by_kw, last_final_amount_by_panels")
         .eq("company_id", companyId)
         .maybeSingle();
-      const existingMap = parseLastInverterByKw(
-        prefsRow.error ? {} : prefsRow.data?.last_inverter_by_kw
-      );
-      prefPatch.last_inverter_by_kw = mergeLastInverterByKw(
-        existingMap,
-        systemKw,
-        inverterMake,
-        inverterSize
-      );
+      const prefsData = prefsRow.error ? null : prefsRow.data;
+      if (needsInverterMap) {
+        prefPatch.last_inverter_by_kw = mergeLastInverterByKw(
+          parseLastInverterByKw(prefsData?.last_inverter_by_kw),
+          systemKw,
+          inverterMake,
+          inverterSize
+        );
+      }
+      if (needsFinalAmountMap) {
+        prefPatch.last_final_amount_by_panels = mergeLastFinalAmountByPanels(
+          parseLastFinalAmountByPanels(prefsData?.last_final_amount_by_panels),
+          wattPeakSaved,
+          panelCountSaved,
+          finalAmountSaved
+        );
+      }
     }
     if (systemKw > 0 && systemKw < 3) {
       prefPatch.last_subsidy_under_3kw = {
@@ -301,7 +319,7 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
 
     if (Object.keys(prefPatch).length > 1) {
       let patch = { ...prefPatch };
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < 5; attempt++) {
         const savedPrefs = await supabase
           .from("quotation_company_settings")
           .update(patch)
@@ -317,7 +335,7 @@ export async function upsertQuotation(input: unknown): Promise<UpsertQuotationRe
           continue;
         }
         if (
-          /last_inverter_by_kw|last_subsidy_under_3kw|last_bom_items/i.test(
+          /last_inverter_by_kw|last_subsidy_under_3kw|last_bom_items|last_final_amount_by_panels/i.test(
             `${savedPrefs.error.message ?? ""} ${savedPrefs.error.details ?? ""}`
           )
         ) {
