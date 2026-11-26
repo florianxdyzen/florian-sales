@@ -49,6 +49,8 @@ export type ProposalInput = {
   meterPhase?: string | null;
   meterChargeAmount?: number | null;
   meterPhaseLabel?: string | null;
+  /** Commercial quotation: GEDA fee added on top of the system price. */
+  gedaChargeAmount?: number | null;
   panelMountType?: string | null;
   tierType?: "premium" | "regular" | null;
   structureMicron?: 40 | 60 | 80 | null;
@@ -284,6 +286,10 @@ export function calculateSolarProposal(data: ProposalInput, template: SolarPropo
       ? Number(data.meterChargeAmount)
       : template.netMeterCharges;
   const meterPhaseLabel = data.meterPhaseLabel?.trim() || null;
+  const geda =
+    data.gedaChargeAmount != null && Number.isFinite(Number(data.gedaChargeAmount))
+      ? Math.max(0, Number(data.gedaChargeAmount))
+      : 0;
 
   const projectType = data.projectType ?? "residential";
   const subsidyBreakdown = resolveQuotationSubsidyBreakdown({
@@ -294,7 +300,7 @@ export function calculateSolarProposal(data: ProposalInput, template: SolarPropo
   });
   const sub = subsidyBreakdown.total;
 
-  const payableBeforeSubsidy = systemPackageTotal + add + nm;
+  const payableBeforeSubsidy = systemPackageTotal + add + nm + geda;
   const totalCost = payableBeforeSubsidy - sub;
 
   const annualGen = capacityKw * template.yieldPerKw * pr;
@@ -355,7 +361,7 @@ export function calculateSolarProposal(data: ProposalInput, template: SolarPropo
     add,
     nm,
     meterPhaseLabel,
-    geda: 0,
+    geda,
     panelMountLabel: null as string | null,
     commercialPricing: null as { base: number; gst: number; total: number } | null,
     commercialGstPercent: 0,

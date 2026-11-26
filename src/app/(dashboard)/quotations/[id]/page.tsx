@@ -108,6 +108,12 @@ export default async function QuotationDetailPage({
         <Stat label="Grand total" value={formatCurrency(Number(quote.grand_total))} />
       </div>
 
+      {quote.project_type === "commercial" && Number(quote.geda_charge_amount) > 0 && (
+        <p className="text-sm text-[var(--text-body)]">
+          GEDA charges {formatCurrency(Number(quote.geda_charge_amount))} are included in the grand total and on the printed quotation.
+        </p>
+      )}
+
       {(quote.notes || quote.terms) && (
         <div className="grid gap-4 sm:grid-cols-2">
           {quote.notes && (

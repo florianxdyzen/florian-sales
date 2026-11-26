@@ -297,6 +297,12 @@ export function SolarProposalDocument({
                   </td>
                   <td className="amt">{amt(calc.nm)}</td>
                 </tr>
+                {calc.geda > 0 ? (
+                  <tr>
+                    <td>GEDA Charges</td>
+                    <td className="amt">{amt(calc.geda)}</td>
+                  </tr>
+                ) : null}
                 {calc.add > 0 ? <tr><td>Additional Charges</td><td className="amt">{amt(calc.add)}</td></tr> : null}
                 {calc.discountAmount > 0 ? (
                   <tr><td>Discount</td><td className="amt">{amt(calc.discountAmount)}</td></tr>

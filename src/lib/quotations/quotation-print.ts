@@ -103,6 +103,10 @@ export function buildQuotationPrintData(
     meterChargeAmount,
     meterPhaseLabel:
       quote.meter_phase_label?.trim() || (meterChargeAmount > 0 ? "As per DISCOM" : null),
+    gedaChargeAmount:
+      quote.geda_charge_amount != null && Number.isFinite(Number(quote.geda_charge_amount))
+        ? Number(quote.geda_charge_amount)
+        : null,
     panelMountType: quote.panel_mount_type ?? null,
     tierType: quote.tier_type === "regular" ? "regular" : quote.tier_type === "premium" ? "premium" : null,
     structureMicron: parseStructureMicron(quote.structure_micron),
